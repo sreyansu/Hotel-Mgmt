@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
-import { supabase } from '../lib/supabaseClient';
+import { api } from '../lib/api';
+import { useAuth } from '../hooks/useAuth';
 import { Input } from '../components/ui/Input';
 import { Button } from '../components/ui/Button';
 import { uploadImageToImgBB } from '../lib/imgbb';
@@ -14,6 +15,7 @@ interface Profile {
 }
 
 export const ProfilePage = () => {
+    const { user, refreshProfile } = useAuth();
     const [profile, setProfile] = useState<Profile>({
         full_name: '',
         phone: '',
@@ -34,25 +36,24 @@ export const ProfilePage = () => {
     }, []);
 
     const fetchProfile = async () => {
-        const { data: { user } } = await supabase.auth.getUser();
-        if (!user) {
+        try {
+            const data = await api.get('/auth/me');
+            if (data?.user) {
+                setUserEmail(data.user.email);
+                setProfile({
+                    full_name: data.user.full_name || '',
+                    phone: data.user.phone || '',
+                    date_of_birth: data.user.date_of_birth || '',
+                    address: data.user.address || '',
+                    avatar_url: data.user.avatar_url || '',
+                });
+            }
+        } catch (err: any) {
+            console.error('Error fetching profile:', err);
             navigate('/login');
-            return;
+        } finally {
+            setLoading(false);
         }
-        if (user.email) setUserEmail(user.email);
-
-        const { data, error } = await supabase
-            .from('profiles')
-            .select('full_name, phone, date_of_birth, address, avatar_url')
-            .eq('id', user.id)
-            .single();
-
-        if (error) {
-            console.error('Error fetching profile:', error);
-        } else if (data) {
-            setProfile(data);
-        }
-        setLoading(false);
     };
 
     const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -62,11 +63,8 @@ export const ProfilePage = () => {
     const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
         if (!e.target.files || e.target.files.length === 0) return;
 
-        // For demo purposes, we might need the user to input their key, or we hardcode it if provided safely.
-        // Asking user for key if not set.
         if (!imgBbKey) {
             setShowImgBbInput(true);
-            // Don't return, let them see the input
             return;
         }
 
@@ -88,30 +86,19 @@ export const ProfilePage = () => {
         setLoading(true);
         setError(null);
 
-        const { data: { user } } = await supabase.auth.getUser();
-        if (!user) return;
-
-        const { error } = await supabase
-            .from('profiles')
-            .update({
-                full_name: profile.full_name,
-                phone: profile.phone,
-                date_of_birth: profile.date_of_birth || null,
-                address: profile.address,
-                avatar_url: profile.avatar_url,
-            })
-            .eq('id', user.id);
-
-        if (error) {
-            setError(error.message);
-        } else {
+        try {
+            await api.put('/auth/profile', profile);
+            await refreshProfile();
             alert('Profile updated successfully!');
+        } catch (err: any) {
+            setError(err.message || 'Failed to update profile');
+        } finally {
+            setLoading(false);
         }
-        setLoading(false);
     };
 
-    if (loading && !profile.full_name) {
-        return <div className="text-center mt-20">Loading...</div>;
+    if (loading && !profile.full_name && !userEmail) {
+        return <div className="text-center mt-20">Loading profile...</div>;
     }
 
     return (
@@ -128,7 +115,7 @@ export const ProfilePage = () => {
                     {profile.avatar_url ? (
                         <img src={profile.avatar_url} alt="Profile" className="w-full h-full object-cover" />
                     ) : (
-                        <div className="flex items-center justify-center w-full h-full text-slate-400">No Img</div>
+                        <div className="flex items-center justify-center w-full h-full text-slate-400 text-xs">No Img</div>
                     )}
                 </div>
 
@@ -159,9 +146,6 @@ export const ProfilePage = () => {
                     >
                         {uploading ? 'Uploading...' : 'Change Profile Picture'}
                     </label>
-                    {!imgBbKey && !uploading && (
-                        <p className="text-xs text-red-500 mt-2 text-center" onClick={() => setShowImgBbInput(true)}>Need API Key?</p>
-                    )}
                 </div>
             </div>
 
@@ -175,7 +159,7 @@ export const ProfilePage = () => {
                     />
                     <Input
                         label="Email"
-                        value={userEmail}
+                        value={userEmail || user?.email || ''}
                         disabled
                         className="bg-slate-50"
                     />

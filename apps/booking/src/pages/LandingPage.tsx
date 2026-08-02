@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { supabase } from '../lib/supabaseClient';
+import { api } from '../lib/api';
 import { Button } from '../components/ui/Button';
 import { Link, useNavigate } from 'react-router-dom';
 import { Search, MapPin, Calendar } from 'lucide-react';
@@ -13,7 +13,7 @@ interface Hotel {
     name: string;
     address: string;
     images: string[];
-    price_start?: number; // Calculated or min room price
+    starting_price?: number;
 }
 
 export const LandingPage = () => {
@@ -28,16 +28,16 @@ export const LandingPage = () => {
     }, []);
 
     const fetchFeaturedHotels = async () => {
-        // For now, just fetch first 3
-        const { data, error } = await supabase
-            .from('hotels')
-            .select('id, slug, name, address, images')
-            .limit(3);
-
-        if (!error && data) {
-            setFeaturedHotels(data);
+        try {
+            const data = await api.get('/hotels');
+            if (data?.hotels) {
+                setFeaturedHotels(data.hotels.slice(0, 3));
+            }
+        } catch (err) {
+            console.error('Error fetching hotels:', err);
+        } finally {
+            setLoading(false);
         }
-        setLoading(false);
     };
 
     const handleSearch = (e: React.FormEvent) => {

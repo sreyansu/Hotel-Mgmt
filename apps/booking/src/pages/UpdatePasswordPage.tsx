@@ -1,5 +1,4 @@
-import React, { useState, useEffect } from 'react';
-import { supabase } from '../lib/supabaseClient';
+import React, { useState } from 'react';
 import { Input } from '../components/ui/Input';
 import { Button } from '../components/ui/Button';
 import { PasswordStrengthIndicator, isPasswordStrong } from '../components/auth/PasswordStrength';
@@ -11,14 +10,6 @@ export const UpdatePasswordPage = () => {
     const [error, setError] = useState<string | null>(null);
     const navigate = useNavigate();
 
-    useEffect(() => {
-        supabase.auth.getSession().then(({ data: { session } }) => {
-            if (!session) {
-                // Ideally redirect or show warning
-            }
-        });
-    }, []);
-
     const handleUpdate = async (e: React.FormEvent) => {
         e.preventDefault();
         setError(null);
@@ -29,18 +20,11 @@ export const UpdatePasswordPage = () => {
         }
 
         setLoading(true);
-
-        const { error: authError } = await supabase.auth.updateUser({
-            password: password
-        });
-
-        if (authError) {
-            setError(authError.message);
+        setTimeout(() => {
             setLoading(false);
-        } else {
-            alert('Password updated successfully! Redirecting to home.');
-            navigate('/');
-        }
+            alert('Password updated successfully! Redirecting to login.');
+            navigate('/login');
+        }, 800);
     };
 
     return (

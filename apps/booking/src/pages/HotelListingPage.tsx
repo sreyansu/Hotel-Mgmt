@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { supabase } from '../lib/supabaseClient';
+import { api } from '../lib/api';
 import { Button } from '../components/ui/Button';
 import { Input } from '../components/ui/Input';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
@@ -12,6 +12,7 @@ interface Hotel {
     address: string;
     images: string[];
     description: string;
+    starting_price?: number;
 }
 
 export const HotelListingPage = () => {
@@ -42,15 +43,17 @@ export const HotelListingPage = () => {
     }, [searchTerm, hotels]);
 
     const fetchHotels = async () => {
-        const { data, error } = await supabase
-            .from('hotels')
-            .select('id, slug, name, address, images, description');
-
-        if (!error && data) {
-            setHotels(data);
-            setFilteredHotels(data);
+        try {
+            const data = await api.get('/hotels');
+            if (data?.hotels) {
+                setHotels(data.hotels);
+                setFilteredHotels(data.hotels);
+            }
+        } catch (err) {
+            console.error('Error fetching hotels:', err);
+        } finally {
+            setLoading(false);
         }
-        setLoading(false);
     };
 
     return (

@@ -1,31 +1,36 @@
 import React, { useState } from 'react';
-import { supabase } from '../lib/supabaseClient';
+import { useAuth } from '../hooks/useAuth';
 import { Input } from '../components/ui/Input';
 import { Button } from '../components/ui/Button';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useNavigate, useLocation } from 'react-router-dom';
 
 export const LoginPage = () => {
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
+    const { login } = useAuth();
     const navigate = useNavigate();
+    const location = useLocation();
+
+    const from = (location.state as any)?.from?.pathname || '/';
 
     const handleLogin = async (e: React.FormEvent) => {
         e.preventDefault();
         setLoading(true);
         setError(null);
 
-        const { error: authError } = await supabase.auth.signInWithPassword({
-            email,
-            password,
-        });
-
-        if (authError) {
-            setError(authError.message);
+        try {
+            const res = await login(email, password);
+            if (res.user?.role === 'super_admin' || res.user?.role === 'hotel_manager') {
+                navigate('/admin');
+            } else {
+                navigate(from);
+            }
+        } catch (err: any) {
+            setError(err.message || 'Failed to sign in. Please check your credentials.');
+        } finally {
             setLoading(false);
-        } else {
-            navigate('/');
         }
     };
 
@@ -34,6 +39,12 @@ export const LoginPage = () => {
             <h2 className="text-2xl font-bold mb-6 text-center text-primary">Sign In</h2>
 
             {error && <div className="mb-4 p-3 bg-red-50 text-red-600 font-medium text-sm rounded">{error}</div>}
+
+            <div className="mb-4 p-3 bg-slate-50 border border-slate-200 rounded text-xs text-slate-600">
+                <p className="font-semibold text-slate-800 mb-1">Demo Credentials:</p>
+                <p>👑 <span className="font-mono">admin@grandpalace.com</span> / <span className="font-mono">admin123</span> (Admin)</p>
+                <p>👤 <span className="font-mono">customer@example.com</span> / <span className="font-mono">customer123</span> (Customer)</p>
+            </div>
 
             <form onSubmit={handleLogin} className="space-y-4">
                 <Input
@@ -51,9 +62,6 @@ export const LoginPage = () => {
                         onChange={(e) => setPassword(e.target.value)}
                         required
                     />
-                    <div className="text-right">
-                        <Link to="/forgot-password" className="text-xs text-primary hover:underline">Forgot password?</Link>
-                    </div>
                 </div>
 
                 <Button type="submit" className="w-full" isLoading={loading}>

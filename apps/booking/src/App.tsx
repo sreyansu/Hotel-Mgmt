@@ -5,19 +5,22 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { LandingPage } from './pages/LandingPage';
 import { HotelListingPage } from './pages/HotelListingPage';
 import { HotelDetailsPage } from './pages/HotelDetailsPage';
+import { CheckoutPage } from './pages/CheckoutPage';
+import { MyBookingsPage } from './pages/MyBookingsPage';
 
-// Auth Pages
+// Admin Page
+import { AdminDashboardPage } from './pages/admin/AdminDashboardPage';
+
+// Auth Pages & Route Guard
 import { LoginPage } from './pages/LoginPage';
 import { RegisterPage } from './pages/RegisterPage';
 import { ForgotPasswordPage } from './pages/ForgotPasswordPage';
 import { UpdatePasswordPage } from './pages/UpdatePasswordPage';
 import { ProfilePage } from './pages/ProfilePage';
-import { CheckoutPage } from './pages/CheckoutPage';
+import { ProtectedRoute } from './components/auth/ProtectedRoute';
 
 // Components
 import { Navbar } from './components/layout/Navbar';
-
-const MyBookings = () => <div className="p-8 text-center text-gray-500">My Bookings Limit Reached (Feature coming in Phase 2)</div>;
 
 const queryClient = new QueryClient();
 
@@ -76,14 +79,33 @@ function App() {
             <Route path="/hotels" element={<HotelListingPage />} />
             <Route path="/hotels/:slug" element={<HotelDetailsPage />} />
             <Route path="/checkout" element={<CheckoutPage />} />
-            <Route path="/bookings" element={<MyBookings />} />
+            <Route path="/bookings" element={<MyBookingsPage />} />
 
             {/* Auth Routes */}
             <Route path="/login" element={<LoginPage />} />
             <Route path="/register" element={<RegisterPage />} />
             <Route path="/forgot-password" element={<ForgotPasswordPage />} />
             <Route path="/update-password" element={<UpdatePasswordPage />} />
-            <Route path="/profile" element={<ProfilePage />} />
+            
+            {/* Authenticated Profile Route */}
+            <Route
+              path="/profile"
+              element={
+                <ProtectedRoute>
+                  <ProfilePage />
+                </ProtectedRoute>
+              }
+            />
+
+            {/* RBAC Protected Admin Dashboard Route */}
+            <Route
+              path="/admin"
+              element={
+                <ProtectedRoute allowedRoles={['super_admin', 'hotel_manager', 'staff']}>
+                  <AdminDashboardPage />
+                </ProtectedRoute>
+              }
+            />
           </Routes>
         </MainLayout>
       </Router>

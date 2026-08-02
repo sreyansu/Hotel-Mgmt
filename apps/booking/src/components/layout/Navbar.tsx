@@ -1,30 +1,16 @@
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { supabase } from '../../lib/supabaseClient';
+import { useAuth } from '../../hooks/useAuth';
 import { Button } from '../ui/Button';
-import { User, LogOut, Menu, X } from 'lucide-react';
+import { User, LogOut, Menu, X, ShieldCheck } from 'lucide-react';
 
 export const Navbar = () => {
-    const [user, setUser] = useState<any>(null);
+    const { user, isStaff, signOut } = useAuth();
     const [isMenuOpen, setIsMenuOpen] = useState(false);
     const navigate = useNavigate();
 
-    useEffect(() => {
-        // Check initial user
-        supabase.auth.getSession().then(({ data: { session } }) => {
-            setUser(session?.user ?? null);
-        });
-
-        // Listen for auth changes
-        const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
-            setUser(session?.user ?? null);
-        });
-
-        return () => subscription.unsubscribe();
-    }, []);
-
-    const handleLogout = async () => {
-        await supabase.auth.signOut();
+    const handleLogout = () => {
+        signOut();
         navigate('/');
     };
 
@@ -47,9 +33,21 @@ export const Navbar = () => {
                             <Link to="/bookings" className="text-slate-600 hover:text-primary font-medium transition-colors">
                                 My Bookings
                             </Link>
+
+                            {/* RBAC Admin Portal Link */}
+                            {isStaff && (
+                                <Link
+                                    to="/admin"
+                                    className="flex items-center gap-1.5 px-3 py-1 bg-amber-50 text-amber-900 border border-amber-200 rounded-full text-xs font-semibold hover:bg-amber-100 transition-colors shadow-sm"
+                                >
+                                    <ShieldCheck className="w-4 h-4 text-amber-600" />
+                                    <span>Admin Panel</span>
+                                </Link>
+                            )}
+
                             <Link to="/profile" className="flex items-center gap-2 text-slate-600 hover:text-primary font-medium transition-colors">
                                 <User className="h-4 w-4" />
-                                <span>Profile</span>
+                                <span>{user.full_name || 'Profile'}</span>
                             </Link>
                             <Button variant="outline" size="sm" onClick={handleLogout} className="ml-2 border-red-200 text-red-600 hover:bg-red-50 hover:text-red-700">
                                 <LogOut className="h-4 w-4 mr-2" />
@@ -83,6 +81,16 @@ export const Navbar = () => {
 
                     {user ? (
                         <>
+                            {isStaff && (
+                                <Link
+                                    to="/admin"
+                                    className="flex items-center gap-2 text-amber-800 font-semibold py-2"
+                                    onClick={() => setIsMenuOpen(false)}
+                                >
+                                    <ShieldCheck className="w-4 h-4 text-amber-600" />
+                                    <span>Admin Panel</span>
+                                </Link>
+                            )}
                             <Link to="/bookings" className="text-slate-600 font-medium py-2" onClick={() => setIsMenuOpen(false)}>
                                 My Bookings
                             </Link>

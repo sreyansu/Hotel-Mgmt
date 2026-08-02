@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { supabase } from '../lib/supabaseClient';
+import { api } from '../lib/api';
 import { Button } from '../components/ui/Button';
 import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import { MapPin, Users, Check } from 'lucide-react';
@@ -15,7 +15,7 @@ interface Room {
     images: string[];
     amenities: string[];
     total_units: number;
-    available?: boolean; // Add available property
+    available?: boolean;
 }
 
 interface Hotel {
@@ -58,32 +58,24 @@ export const HotelDetailsPage = () => {
     }, [slug]);
 
     const fetchHotelDetails = async (slug: string) => {
-        // Fetch hotel
-        const { data: hotelData, error: hotelError } = await supabase
-            .from('hotels')
-            .select('*')
-            .eq('slug', slug)
-            .single();
-
-        if (hotelError || !hotelData) {
-            setError('Hotel not found');
+        try {
+            const data = await api.get(`/hotels/${slug}`);
+            if (!data?.hotel) {
+                setError('Hotel not found');
+            } else {
+                setHotel(data.hotel);
+                setRooms(
+                    (data.rooms || []).map((room: any) => ({
+                        ...room,
+                        available: true,
+                    }))
+                );
+            }
+        } catch (err: any) {
+            setError(err.message || 'Error loading hotel');
+        } finally {
             setLoading(false);
-            return;
         }
-
-        setHotel(hotelData);
-
-        // Fetch rooms for this hotel
-        const { data: roomData, error: roomError } = await supabase
-            .from('rooms')
-            .select('*')
-            .eq('hotel_id', hotelData.id);
-
-        if (!roomError && roomData) {
-            // Mark all rooms as available by default (can be modified via admin panel later)
-            setRooms(roomData.map(room => ({ ...room, available: true })));
-        }
-        setLoading(false);
     };
 
     const handleBookRoom = (roomId: string) => {

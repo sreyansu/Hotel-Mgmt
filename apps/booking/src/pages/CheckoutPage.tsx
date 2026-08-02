@@ -1,56 +1,86 @@
 import { useEffect, useState } from "react";
-import { supabase } from "../lib/supabaseClient";
+import { useSearchParams, useNavigate } from "react-router-dom";
+import { api } from "../lib/api";
+import { useAuth } from "../hooks/useAuth";
 import { Button } from "../components/ui/Button";
 import { Input } from "../components/ui/Input";
-import { useNavigate, useLocation } from "react-router-dom";
-import { Users, CreditCard, ArrowLeft, Calendar, MapPin, Bed, Tag } from "lucide-react";
 import { DateRangePicker } from "../components/ui/DateRangePicker";
 import type { DateRange } from "react-day-picker";
+import {
+    Calendar,
+    Users,
+    Tag,
+    CreditCard,
+    ArrowLeft,
+    MapPin,
+    Bed,
+    CheckCircle2,
+} from "lucide-react";
+
+interface Hotel {
+    id: string;
+    name: string;
+    address: string;
+    images: string[];
+}
 
 interface Room {
     id: string;
     name: string;
     price_per_night: number;
     capacity: number;
-    hotel: {
-        id: string;
-        name: string;
-        address: string;
-    };
+    images: string[];
+    hotel: Hotel;
 }
 
 export const CheckoutPage = () => {
-    const navigate = useNavigate();
-    const location = useLocation();
-    const searchParams = new URLSearchParams(location.search);
-
+    const [searchParams] = useSearchParams();
     const roomId = searchParams.get("roomId");
-    const urlCheckIn = searchParams.get("checkIn");
-    const urlCheckOut = searchParams.get("checkOut");
+    const checkInParam = searchParams.get("checkIn");
+    const checkOutParam = searchParams.get("checkOut");
+
+    const navigate = useNavigate();
+    const { user } = useAuth();
 
     const [room, setRoom] = useState<Room | null>(null);
     const [loading, setLoading] = useState(true);
     const [processing, setProcessing] = useState(false);
+    const [successBookingId, setSuccessBookingId] = useState<string | null>(null);
 
-    const [dateRange, setDateRange] = useState<DateRange | undefined>(() => {
-        if (urlCheckIn && urlCheckOut) {
-            return {
-                from: new Date(urlCheckIn),
-                to: new Date(urlCheckOut),
-            };
-        }
-        return undefined;
-    });
-
-    const [guests, setGuests] = useState(1);
+    // Form state
     const [guestName, setGuestName] = useState("");
     const [guestEmail, setGuestEmail] = useState("");
     const [guestPhone, setGuestPhone] = useState("");
+    const [guests, setGuests] = useState(1);
 
+    // Date state
+    const [dateRange, setDateRange] = useState<DateRange | undefined>(() => {
+        if (checkInParam && checkOutParam) {
+            return {
+                from: new Date(checkInParam),
+                to: new Date(checkOutParam),
+            };
+        }
+        const tomorrow = new Date();
+        tomorrow.setDate(tomorrow.getDate() + 1);
+        const dayAfter = new Date();
+        dayAfter.setDate(dayAfter.getDate() + 3);
+        return { from: tomorrow, to: dayAfter };
+    });
+
+    // Coupon state
     const [couponCode, setCouponCode] = useState("");
     const [discountPercent, setDiscountPercent] = useState(0);
     const [couponError, setCouponError] = useState("");
     const [couponSuccess, setCouponSuccess] = useState("");
+
+    useEffect(() => {
+        if (user) {
+            setGuestName(user.full_name || "");
+            setGuestEmail(user.email || "");
+            setGuestPhone(user.phone || "");
+        }
+    }, [user]);
 
     useEffect(() => {
         if (!roomId) {
@@ -59,42 +89,23 @@ export const CheckoutPage = () => {
         }
 
         const loadData = async () => {
-            const { data: roomData, error } = await supabase
-                .from("rooms")
-                .select("*, hotel:hotels(*)")
-                .eq("id", roomId)
-                .single();
-
-            if (error || !roomData) {
+            try {
+                const data = await api.get(`/hotels/rooms/details/${roomId}`);
+                if (data?.room) {
+                    setRoom(data.room);
+                } else {
+                    navigate("/hotels");
+                }
+            } catch (err) {
+                console.error("Error loading room for checkout:", err);
                 navigate("/hotels");
-                return;
+            } finally {
+                setLoading(false);
             }
-
-            setRoom(roomData as Room);
-
-            const { data } = await supabase.auth.getUser();
-            if (!data.user) {
-                navigate(`/login?redirect=${location.pathname}${location.search}`);
-                return;
-            }
-
-            const { data: profile } = await supabase
-                .from("profiles")
-                .select("full_name, email, phone")
-                .eq("id", data.user.id)
-                .single();
-
-            if (profile) {
-                setGuestName(profile.full_name || "");
-                setGuestEmail(profile.email || data.user.email || "");
-                setGuestPhone(profile.phone || "");
-            }
-
-            setLoading(false);
         };
 
         loadData();
-    }, [roomId]);
+    }, [roomId, navigate]);
 
     const handleApplyCoupon = async () => {
         setCouponError("");
@@ -103,18 +114,14 @@ export const CheckoutPage = () => {
 
         if (!couponCode.trim()) return;
 
-        const { data, error } = await supabase
-            .from("coupons")
-            .select("discount_percent")
-            .eq("code", couponCode.toUpperCase())
-            .eq("is_active", true)
-            .single();
-
-        if (error || !data) {
-            setCouponError("Invalid or expired coupon");
-        } else {
-            setDiscountPercent(data.discount_percent);
-            setCouponSuccess(`Coupon applied: ${data.discount_percent}% OFF`);
+        try {
+            const data = await api.get(`/coupons/validate/${couponCode.toUpperCase().trim()}`);
+            if (data?.valid) {
+                setDiscountPercent(data.discount_percent);
+                setCouponSuccess(`Coupon applied: ${data.discount_percent}% OFF!`);
+            }
+        } catch (err: any) {
+            setCouponError(err.message || "Invalid or expired coupon code");
         }
     };
 
@@ -123,13 +130,10 @@ export const CheckoutPage = () => {
             return { base: 0, tax: 0, total: 0, discount: 0, nights: 0 };
         }
 
-        const nights = Math.ceil(
-            (dateRange.to.getTime() - dateRange.from.getTime()) / (1000 * 60 * 60 * 24)
+        const nights = Math.max(
+            1,
+            Math.ceil((dateRange.to.getTime() - dateRange.from.getTime()) / (1000 * 60 * 60 * 24))
         );
-
-        if (nights <= 0) {
-            return { base: 0, tax: 0, total: 0, discount: 0, nights: 0 };
-        }
 
         const base = nights * room.price_per_night;
         const discount = (base * discountPercent) / 100;
@@ -142,76 +146,41 @@ export const CheckoutPage = () => {
 
     const handlePayment = async () => {
         if (!room || !dateRange?.from || !dateRange?.to) return;
+        if (!guestName || !guestEmail) {
+            alert("Please fill in your name and email address.");
+            return;
+        }
 
         setProcessing(true);
 
         try {
-            const { data } = await supabase.auth.getSession();
-            if (!data.session) {
-                navigate("/login");
-                return;
-            }
-
+            const { total } = calculateDisplayTotal();
             const checkIn = dateRange.from.toISOString().split("T")[0];
             const checkOut = dateRange.to.toISOString().split("T")[0];
 
-            const response = await fetch(
-                `https://${import.meta.env.VITE_SUPABASE_PROJECT_REF}.supabase.co/functions/v1/create-payment-intent`,
-                {
-                    method: "POST",
-                    headers: {
-                        "Content-Type": "application/json",
-                        Authorization: `Bearer ${data.session.access_token}`,
-                    },
-                    body: JSON.stringify({
-                        roomId: room.id,
-                        checkIn,
-                        checkOut,
-                        couponCode: couponCode || null,
-                    }),
-                }
-            );
-
-            const order = await response.json();
-
-            if (!response.ok) {
-                throw new Error(order.error || "Payment initiation failed");
-            }
-
-            const rzp = new (window as any).Razorpay({
-                key: import.meta.env.VITE_RAZORPAY_KEY_ID,
-                amount: order.amount,
-                currency: order.currency,
-                name: "Grand Hotels",
-                description: `Booking for ${room.name}`,
-                image: "https://images.unsplash.com/photo-1566073771259-6a8506099945?w=100",
-                order_id: order.id,
-                prefill: {
-                    name: guestName,
-                    email: guestEmail,
-                    contact: guestPhone,
-                },
-                handler: () => {
-                    alert("Payment successful!");
-                    navigate("/bookings");
-                },
-                modal: {
-                    confirm_close: true,
-                },
-                theme: {
-                    color: "#16a34a",
-                },
+            const response = await api.post("/bookings", {
+                hotel_id: room.hotel.id,
+                room_id: room.id,
+                check_in_date: checkIn,
+                check_out_date: checkOut,
+                total_price: total,
+                guest_name: guestName,
+                guest_email: guestEmail,
+                guest_phone: guestPhone,
+                payment_status: "paid",
             });
 
-            rzp.open();
+            if (response?.booking?.id) {
+                setSuccessBookingId(response.booking.id);
+            }
         } catch (err: any) {
-            alert(err.message || "Payment failed");
+            alert(err.message || "Booking failed. Please try again.");
         } finally {
             setProcessing(false);
         }
     };
 
-    if (loading) return <div className="py-20 text-center">Loading checkout…</div>;
+    if (loading) return <div className="py-20 text-center text-slate-600">Loading checkout...</div>;
     if (!room) return null;
 
     const { base, tax, total, discount, nights } = calculateDisplayTotal();
@@ -224,6 +193,54 @@ export const CheckoutPage = () => {
             year: "numeric",
         });
 
+    if (successBookingId) {
+        return (
+            <div className="min-h-screen bg-slate-50 flex items-center justify-center p-4">
+                <div className="bg-white max-w-lg w-full p-8 rounded-2xl shadow-xl border border-slate-100 text-center">
+                    <div className="w-16 h-16 bg-emerald-100 text-emerald-600 rounded-full flex items-center justify-center mx-auto mb-4">
+                        <CheckCircle2 className="w-10 h-10" />
+                    </div>
+                    <h2 className="text-2xl font-bold text-slate-900 mb-2">Reservation Confirmed!</h2>
+                    <p className="text-slate-600 mb-6">
+                        Thank you, <span className="font-semibold text-slate-900">{guestName}</span>. Your stay at{" "}
+                        <span className="font-semibold text-slate-900">{room.hotel.name}</span> has been confirmed.
+                    </p>
+
+                    <div className="bg-slate-50 p-4 rounded-xl text-left text-sm space-y-2 mb-6 border border-slate-200">
+                        <div className="flex justify-between">
+                            <span className="text-slate-500">Booking ID:</span>
+                            <span className="font-mono font-medium text-slate-900 text-xs">{successBookingId}</span>
+                        </div>
+                        <div className="flex justify-between">
+                            <span className="text-slate-500">Room:</span>
+                            <span className="font-medium text-slate-900">{room.name}</span>
+                        </div>
+                        <div className="flex justify-between">
+                            <span className="text-slate-500">Dates:</span>
+                            <span className="font-medium text-slate-900">
+                                {dateRange?.from ? formatDate(dateRange.from) : ""} &rarr;{" "}
+                                {dateRange?.to ? formatDate(dateRange.to) : ""}
+                            </span>
+                        </div>
+                        <div className="flex justify-between border-t border-slate-200 pt-2 font-bold text-slate-900">
+                            <span>Amount Paid:</span>
+                            <span>₹{total.toLocaleString("en-IN", { maximumFractionDigits: 0 })}</span>
+                        </div>
+                    </div>
+
+                    <div className="flex gap-4">
+                        <Button variant="outline" className="flex-1" onClick={() => navigate("/hotels")}>
+                            Browse More
+                        </Button>
+                        <Button className="flex-1" onClick={() => navigate("/bookings")}>
+                            My Bookings
+                        </Button>
+                    </div>
+                </div>
+            </div>
+        );
+    }
+
     return (
         <div className="min-h-screen bg-slate-100">
             <div className="container mx-auto px-4 py-8">
@@ -233,7 +250,7 @@ export const CheckoutPage = () => {
                         <ArrowLeft className="h-4 w-4 mr-2" /> Back to Hotel
                     </Button>
                     <h1 className="text-3xl font-bold text-slate-900">Secure Checkout</h1>
-                    <p className="text-slate-600 mt-1">Complete your booking in just a few steps</p>
+                    <p className="text-slate-600 mt-1">Complete your reservation seamlessly</p>
                 </div>
 
                 <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
@@ -250,6 +267,7 @@ export const CheckoutPage = () => {
                                     value={guestName}
                                     onChange={(e) => setGuestName(e.target.value)}
                                     placeholder="John Doe"
+                                    required
                                 />
                                 <Input
                                     label="Email Address"
@@ -257,6 +275,7 @@ export const CheckoutPage = () => {
                                     value={guestEmail}
                                     onChange={(e) => setGuestEmail(e.target.value)}
                                     placeholder="john@example.com"
+                                    required
                                 />
                                 <Input
                                     label="Phone Number"
@@ -296,7 +315,7 @@ export const CheckoutPage = () => {
                                 <Input
                                     value={couponCode}
                                     onChange={(e) => setCouponCode(e.target.value.toUpperCase())}
-                                    placeholder="Enter coupon code"
+                                    placeholder="e.g. WELCOME10, SUMMER20, LUXURY25"
                                     className="flex-1"
                                 />
                                 <Button variant="outline" onClick={handleApplyCoupon} className="shrink-0">
@@ -323,18 +342,18 @@ export const CheckoutPage = () => {
                                 <div className="flex gap-4">
                                     <div className="w-20 h-20 bg-slate-200 rounded-lg overflow-hidden flex-shrink-0">
                                         <img
-                                            src="https://images.unsplash.com/photo-1566073771259-6a8506099945?w=200"
-                                            alt={room.hotel.name}
+                                            src={room.hotel?.images?.[0] || room.images?.[0] || "https://images.unsplash.com/photo-1566073771259-6a8506099945?w=200"}
+                                            alt={room.hotel?.name}
                                             className="w-full h-full object-cover"
                                         />
                                     </div>
                                     <div className="flex-1 min-w-0">
-                                        <h3 className="font-semibold text-slate-900 truncate">{room.hotel.name}</h3>
+                                        <h3 className="font-semibold text-slate-900 truncate">{room.hotel?.name}</h3>
                                         <p className="text-sm text-slate-600 flex items-center mt-1">
                                             <Bed className="h-3 w-3 mr-1" /> {room.name}
                                         </p>
                                         <p className="text-xs text-slate-500 flex items-center mt-1 truncate">
-                                            <MapPin className="h-3 w-3 mr-1" /> {room.hotel.address}
+                                            <MapPin className="h-3 w-3 mr-1" /> {room.hotel?.address}
                                         </p>
                                     </div>
                                 </div>
@@ -412,11 +431,11 @@ export const CheckoutPage = () => {
                                     onClick={handlePayment}
                                 >
                                     <CreditCard className="mr-2 h-5 w-5" />
-                                    {processing ? "Processing…" : `Pay ₹${total.toLocaleString("en-IN", { maximumFractionDigits: 0 })}`}
+                                    {processing ? "Processing..." : `Confirm & Pay ₹${total.toLocaleString("en-IN", { maximumFractionDigits: 0 })}`}
                                 </Button>
 
                                 <p className="text-xs text-center text-slate-500">
-                                    🔒 Secure payment powered by Razorpay
+                                    🔒 Instant Confirmation & RBAC Managed Booking
                                 </p>
                             </div>
                         </div>

@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { supabase } from '../lib/supabaseClient';
+import { useAuth } from '../hooks/useAuth';
 import { Input } from '../components/ui/Input';
 import { Button } from '../components/ui/Button';
 import { PasswordStrengthIndicator, isPasswordStrong } from '../components/auth/PasswordStrength';
@@ -11,6 +11,7 @@ export const RegisterPage = () => {
     const [password, setPassword] = useState('');
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
+    const { register } = useAuth();
     const navigate = useNavigate();
 
     const handleRegister = async (e: React.FormEvent) => {
@@ -18,29 +19,20 @@ export const RegisterPage = () => {
         setError(null);
 
         if (!isPasswordStrong(password)) {
-            setError('Password does not meet strength requirements.');
+            setError('Password does not meet strength requirements (min 6 characters).');
             return;
         }
 
         setLoading(true);
 
-        const { error: authError } = await supabase.auth.signUp({
-            email,
-            password,
-            options: {
-                data: {
-                    full_name: fullName,
-                },
-            },
-        });
-
-        if (authError) {
-            setError(authError.message);
+        try {
+            await register(email, password, fullName);
+            alert('Account created successfully!');
+            navigate('/');
+        } catch (err: any) {
+            setError(err.message || 'Registration failed.');
+        } finally {
             setLoading(false);
-        } else {
-            // Assuming email confirmation logic or auto-login
-            alert('Registration successful! Please check your email to confirm your account.');
-            navigate('/login');
         }
     };
 
