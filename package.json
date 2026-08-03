@@ -1,0 +1,16 @@
+{
+  "name": "grand-palace-hotel-mgmt",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "concurrently \"npm run dev:server\" \"npm run dev:client\"",
+    "dev:server": "cd server && npm run dev",
+    "dev:client": "cd apps/booking && npm run dev",
+    "seed": "cd server && node seed.js",
+    "build": "cd apps/booking && npm run build"
+  },
+  "devDependencies": {
+    "concurrently": "^9.1.2"
+  }
+}
