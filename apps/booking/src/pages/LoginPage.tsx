@@ -54,7 +54,7 @@ const ROLES_CONFIG: RoleConfig[] = [
     icon: <ShieldCheck className="w-6 h-6 text-amber-600" />,
     description: 'Global portfolio oversight, multi-property room inventory, promotional coupon campaigns, and RBAC team access.',
     destination: '/admin',
-    demoEmail: 'admin@grandhotels.com',
+    demoEmail: 'admin@paradisepalace.com',
     demoPassword: 'admin@123',
   },
   {
@@ -66,7 +66,7 @@ const ROLES_CONFIG: RoleConfig[] = [
     icon: <Building2 className="w-6 h-6 text-blue-600" />,
     description: 'Property occupancy rate %, Total Revenue & ADR KPIs, dynamic surge pricing (±₹500), and capacity controls.',
     destination: '/admin',
-    demoEmail: 'manager@grandhotels.com',
+    demoEmail: 'manager@paradisepalace.com',
     demoPassword: 'manager@123',
   },
   {

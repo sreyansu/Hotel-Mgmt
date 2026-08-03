@@ -25,7 +25,7 @@ const mongoUri = process.env.MONGODB_URI || 'mongodb://127.0.0.1:27017/hotel_mgm
 
 async function seedDatabase() {
   try {
-    console.log('🌱 Connected to MongoDB for seeding...');
+    console.log('Connected to MongoDB for seeding...');
     await mongoose.connect(mongoUri);
 
     // 1. Clear existing collections
@@ -115,7 +115,7 @@ async function seedDatabase() {
 
     // 3. Seed RBAC Accounts with Assigned Hotel Context
     const adminUser = await User.create({
-      email: process.env.DEFAULT_SUPERADMIN_EMAIL || 'admin@grandhotels.com',
+      email: process.env.DEFAULT_SUPERADMIN_EMAIL || 'admin@paradisepalace.com',
       password: process.env.DEFAULT_SUPERADMIN_PASSWORD || 'admin@123',
       role: 'super_admin',
       full_name: 'Alexander Hamilton',
@@ -124,7 +124,7 @@ async function seedDatabase() {
     });
 
     const managerUser = await User.create({
-      email: process.env.DEFAULT_MANAGER_EMAIL || 'manager@grandhotels.com',
+      email: process.env.DEFAULT_MANAGER_EMAIL || 'manager@paradisepalace.com',
       password: process.env.DEFAULT_MANAGER_PASSWORD || 'manager@123',
       role: 'hotel_manager',
       full_name: 'Priya Sharma',

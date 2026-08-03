@@ -77,8 +77,8 @@ npm run dev
 
 | Role | Email | Password | Access Area |
 | :--- | :--- | :--- | :--- |
-| **Super Admin** | `admin@grandhotels.com` | `admin@123` | Full Portfolio Admin Dashboard (`/admin`), Revenue Stats, Team Provisioning |
-| **Hotel Manager** | `manager@grandhotels.com` | `manager@123` | Hotel Manager Portal (`/admin`), Dynamic Pricing, Occupancy % & ADR KPIs |
+| **Super Admin** | `admin@paradisepalace.com` | `admin@123` | Full Portfolio Admin Dashboard (`/admin`), Revenue Stats, Team Provisioning |
+| **Hotel Manager** | `manager@paradisepalace.com` | `manager@123` | Hotel Manager Portal (`/admin`), Dynamic Pricing, Occupancy % & ADR KPIs |
 | **Front Desk Staff** | `staff@gmail.com` | `staff@123` | Front Desk Terminal (`/admin`), Room Status Board (101–304), Check-in Queue |
 | **Customer** | `customer@gmail.com` | `customer@123` | Hotel Booking, Checkout, My Bookings (`/bookings`) |
 

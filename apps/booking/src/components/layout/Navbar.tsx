@@ -101,14 +101,12 @@ export const Navbar = () => {
                             </Button>
                         </>
                     ) : (
-                        <>
-                            <Link to="/login">
-                                <Button variant="ghost" className="text-slate-600 hover:text-primary">Login</Button>
-                            </Link>
-                            <Link to="/login">
-                                <Button>Sign Up</Button>
-                            </Link>
-                        </>
+                        <Link to="/login">
+                            <Button className="flex items-center gap-2 shadow-sm font-medium">
+                                <User className="h-4 w-4" />
+                                <span>Sign In</span>
+                            </Button>
+                        </Link>
                     )}
                 </div>
 
@@ -152,10 +150,10 @@ export const Navbar = () => {
                     ) : (
                         <div className="flex flex-col gap-3 mt-2">
                             <Link to="/login" onClick={() => setIsMenuOpen(false)}>
-                                <Button variant="outline" className="w-full">Login</Button>
-                            </Link>
-                            <Link to="/login" onClick={() => setIsMenuOpen(false)}>
-                                <Button className="w-full">Sign Up</Button>
+                                <Button className="w-full flex items-center justify-center gap-2">
+                                    <User className="h-4 w-4" />
+                                    <span>Sign In</span>
+                                </Button>
                             </Link>
                         </div>
                     )}

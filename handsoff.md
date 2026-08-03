@@ -25,8 +25,8 @@ The database includes 4 pre-configured RBAC roles ready for testing or live inte
 | Role | Email | Password | Access Area | Tailored Dashboard & Capabilities |
 |---|---|---|---|---|
 | **Front Desk Staff** | `staff@gmail.com` | `staff@123` | `/admin` (Front Desk Terminal) | **Live Operations**: Real-time Room Board (101–304), 1-click Housekeeping Status toggles (`Clean`, `Dirty`, `Cleaning`), guest arrival/departure queue, room key assignment, and concierge request logger. |
-| **Hotel Manager** | `manager@grandhotels.com` | `manager@123` | `/admin` (Manager Portal) | **Financial Strategy & Inventory**: Property Occupancy Rate % gauge, Total Revenue, Average Daily Rate (ADR), dynamic surge/discount rate adjustments (+₹500 / -₹500) with live API sync, and inventory capacity controls. |
-| **Super Admin** | `admin@grandhotels.com` | `admin@123` | `/admin` (Command Center) | **Enterprise Platform Oversight**: Multi-hotel portfolio management (6 properties), Global bookings master ledger, Promo coupon campaigns, and RBAC team provisioning. |
+| **Hotel Manager** | `manager@paradisepalace.com` | `manager@123` | `/admin` (Manager Portal) | **Financial Strategy & Inventory**: Property Occupancy Rate % gauge, Total Revenue, Average Daily Rate (ADR), dynamic surge/discount rate adjustments (+₹500 / -₹500) with live API sync, and inventory capacity controls. |
+| **Super Admin** | `admin@paradisepalace.com` | `admin@123` | `/admin` (Command Center) | **Enterprise Platform Oversight**: Multi-hotel portfolio management (6 properties), Global bookings master ledger, Promo coupon campaigns, and RBAC team provisioning. |
 | **Customer** | `customer@gmail.com` | `customer@123` | `/bookings`, `/` | **Guest Self-Service**: Browse luxury hotels, check availability, apply promo discount codes, reserve suites, and view booked stay history. |
 
 > **Tip**: On the `/login` page, select any of the 4 horizontal role cards to autofill demo credentials and reveal the respective authentication section.

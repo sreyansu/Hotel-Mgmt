@@ -42,7 +42,7 @@ Base URL: `http://localhost:5001/api`
 - **Request Body**:
 ```json
 {
-  "email": "admin@grandhotels.com",
+  "email": "admin@paradisepalace.com",
   "password": "admin@123"
 }
 ```
@@ -53,7 +53,7 @@ Base URL: `http://localhost:5001/api`
   "token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
   "user": {
     "id": "66b2...",
-    "email": "admin@grandhotels.com",
+    "email": "admin@paradisepalace.com",
     "role": "super_admin",
     "full_name": "System Administrator",
     "avatar_url": "avatar-1"
@@ -71,7 +71,7 @@ Base URL: `http://localhost:5001/api`
 {
   "user": {
     "id": "66b2...",
-    "email": "admin@grandhotels.com",
+    "email": "admin@paradisepalace.com",
     "role": "super_admin",
     "full_name": "System Administrator",
     "phone": "+91-98765-43210",
@@ -101,7 +101,7 @@ Base URL: `http://localhost:5001/api`
   "message": "Profile updated successfully",
   "user": {
     "id": "66b2...",
-    "email": "admin@grandhotels.com",
+    "email": "admin@paradisepalace.com",
     "role": "super_admin",
     "full_name": "Alexander Hamilton",
     "avatar_url": "avatar-5"
@@ -152,8 +152,8 @@ Base URL: `http://localhost:5001/api`
   "hotels": [
     {
       "id": "66b4...",
-      "name": "Grand Imperial Hotel",
-      "slug": "grand-imperial-delhi",
+      "name": "PARADISE Palace Hotel - New Delhi",
+      "slug": "paradise-palace-delhi",
       "address": "Connaught Place, New Delhi, 110001",
       "rating": 4.9,
       "starting_price": 5500,
@@ -174,12 +174,12 @@ Base URL: `http://localhost:5001/api`
 {
   "hotel": {
     "id": "66b4...",
-    "name": "Grand Imperial Hotel",
-    "slug": "grand-imperial-delhi",
+    "name": "PARADISE Palace Hotel - New Delhi",
+    "slug": "paradise-palace-delhi",
     "rooms": [
       {
         "id": "66b5...",
-        "name": "Imperial Suite",
+        "name": "Paradise Imperial Suite",
         "price_per_night": 9500,
         "capacity": 2,
         "amenities": ["King Bed", "Bathtub", "City View"]
@@ -197,14 +197,14 @@ Base URL: `http://localhost:5001/api`
 - **Request Body**:
 ```json
 {
-  "name": "Grand Oceanfront Resort",
-  "slug": "grand-oceanfront-resort",
+  "name": "PARADISE Seaview Resort - Goa",
+  "slug": "paradise-seaview-goa",
   "address": "Candolim Beach, North Goa, 403515",
   "description": "Exclusive beachfront luxury resort with private villas.",
   "rating": 4.9,
   "images": ["https://images.unsplash.com/..."],
   "amenities": ["Infinity Pool", "Private Beach", "Ayurvedic Spa"],
-  "contact_email": "candolim@grandpalace.com",
+  "contact_email": "goa@paradisepalace.com",
   "contact_phone": "+91-832-9999-888"
 }
 ```
@@ -212,7 +212,7 @@ Base URL: `http://localhost:5001/api`
 ```json
 {
   "message": "Hotel created successfully",
-  "hotel": { "id": "66b6...", "name": "Grand Oceanfront Resort" }
+  "hotel": { "id": "66b6...", "name": "PARADISE Seaview Resort - Goa" }
 }
 ```
 

@@ -1856,7 +1856,7 @@ export const AdminDashboardPage: React.FC = () => {
                   type="email"
                   value={userForm.email}
                   onChange={(e) => setUserForm({ ...userForm, email: e.target.value })}
-                  placeholder="vikram@grandhotels.com"
+                  placeholder="vikram@paradisepalace.com"
                   required
                 />
               </div>
