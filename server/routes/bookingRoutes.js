@@ -1,3 +1,14 @@
+/**
+ * ==============================================================================
+ * BOOKINGS & RESERVATIONS ROUTE HANDLERS (/api/bookings)
+ * ==============================================================================
+ * Endpoints:
+ * - POST  /api/bookings               : Create new room reservation (Guest or Auth)
+ * - GET   /api/bookings/my-bookings   : Retrieve logged-in customer's bookings
+ * - GET   /api/bookings/admin/all     : Retrieve all portfolio bookings (Admin/Staff)
+ * - PATCH /api/bookings/admin/:id/status : Update stay status (confirmed, checked_in, etc.)
+ */
+
 import express from 'express';
 import { Booking } from '../models/Booking.js';
 import { Room } from '../models/Room.js';
@@ -20,10 +31,12 @@ router.post('/', optionalAuth, async (req, res) => {
       payment_status,
     } = req.body;
 
+    // Validate mandatory booking fields
     if (!hotel_id || !room_id || !check_in_date || !check_out_date || !total_price || !guest_name || !guest_email) {
       return res.status(400).json({ message: 'Missing required reservation fields' });
     }
 
+    // Save booking record to MongoDB
     const booking = await Booking.create({
       hotel: hotel_id,
       room: room_id,
@@ -122,6 +135,41 @@ router.patch('/admin/:id/status', authenticate, authorizeRoles('super_admin', 'h
     });
   } catch (error) {
     return res.status(500).json({ message: 'Failed to update booking status', error: error.message });
+  }
+});
+
+// 5. UPDATE BOOKING DETAILS (Front Desk / Staff: Room Number Assignment & Special Notes)
+router.patch('/admin/:id/details', authenticate, authorizeRoles('super_admin', 'hotel_manager', 'staff'), async (req, res) => {
+  try {
+    const { room_number, special_requests, status } = req.body;
+    const updates = {};
+    if (room_number !== undefined) updates.room_number = room_number;
+    if (special_requests !== undefined) updates.special_requests = special_requests;
+    if (status !== undefined) updates.status = status;
+
+    const booking = await Booking.findByIdAndUpdate(
+      req.params.id,
+      { $set: updates },
+      { new: true }
+    )
+      .populate('hotel', 'name slug address')
+      .populate('room', 'name price_per_night');
+
+    if (!booking) {
+      return res.status(404).json({ message: 'Booking not found' });
+    }
+
+    return res.json({
+      message: 'Booking details updated successfully',
+      booking: {
+        ...booking.toObject(),
+        id: booking._id,
+        hotels: booking.hotel ? { name: booking.hotel.name } : null,
+        rooms: booking.room ? { name: booking.room.name, price_per_night: booking.room.price_per_night } : null,
+      },
+    });
+  } catch (error) {
+    return res.status(500).json({ message: 'Failed to update booking details', error: error.message });
   }
 });
 

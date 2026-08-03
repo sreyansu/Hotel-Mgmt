@@ -1,3 +1,15 @@
+/**
+ * ==============================================================================
+ * CHECKOUT & RESERVATION BOOKING PAGE (`/checkout`)
+ * ==============================================================================
+ * Manages guest room reservations:
+ * 1. Loads selected room & hotel details from `/api/hotels/rooms/details/:id`.
+ * 2. Pre-fills authenticated user info or accepts guest details.
+ * 3. Date range picker calculates total stay nights.
+ * 4. Real-time coupon promo validation with GST (18%) computation.
+ * 5. Submits booking to `/api/bookings` and renders confirmation receipt.
+ */
+
 import { useEffect, useState } from "react";
 import { useSearchParams, useNavigate } from "react-router-dom";
 import { api } from "../lib/api";
@@ -47,13 +59,13 @@ export const CheckoutPage = () => {
     const [processing, setProcessing] = useState(false);
     const [successBookingId, setSuccessBookingId] = useState<string | null>(null);
 
-    // Form state
+    // Guest details form state
     const [guestName, setGuestName] = useState("");
     const [guestEmail, setGuestEmail] = useState("");
     const [guestPhone, setGuestPhone] = useState("");
     const [guests, setGuests] = useState(1);
 
-    // Date state
+    // Stay dates state
     const [dateRange, setDateRange] = useState<DateRange | undefined>(() => {
         if (checkInParam && checkOutParam) {
             return {
@@ -68,12 +80,13 @@ export const CheckoutPage = () => {
         return { from: tomorrow, to: dayAfter };
     });
 
-    // Coupon state
+    // Promotional Coupon state
     const [couponCode, setCouponCode] = useState("");
     const [discountPercent, setDiscountPercent] = useState(0);
     const [couponError, setCouponError] = useState("");
     const [couponSuccess, setCouponSuccess] = useState("");
 
+    // Auto-populate guest fields if user is logged in
     useEffect(() => {
         if (user) {
             setGuestName(user.full_name || "");
@@ -82,6 +95,7 @@ export const CheckoutPage = () => {
         }
     }, [user]);
 
+    // Fetch room details from backend
     useEffect(() => {
         if (!roomId) {
             navigate("/hotels");
@@ -107,6 +121,7 @@ export const CheckoutPage = () => {
         loadData();
     }, [roomId, navigate]);
 
+    // Validate coupon code against /api/coupons/validate/:code
     const handleApplyCoupon = async () => {
         setCouponError("");
         setCouponSuccess("");
@@ -117,14 +132,16 @@ export const CheckoutPage = () => {
         try {
             const data = await api.get(`/coupons/validate/${couponCode.toUpperCase().trim()}`);
             if (data?.valid) {
-                setDiscountPercent(data.discount_percent);
-                setCouponSuccess(`Coupon applied: ${data.discount_percent}% OFF!`);
+                const discount = data.discount_percentage ?? data.discount_percent ?? 0;
+                setDiscountPercent(discount);
+                setCouponSuccess(`Coupon applied: ${discount}% OFF!`);
             }
         } catch (err: any) {
             setCouponError(err.message || "Invalid or expired coupon code");
         }
     };
 
+    // Calculate nights, base rate, discount, GST tax (18%), and final total
     const calculateDisplayTotal = () => {
         if (!room || !dateRange?.from || !dateRange?.to) {
             return { base: 0, tax: 0, total: 0, discount: 0, nights: 0 };
@@ -138,12 +155,13 @@ export const CheckoutPage = () => {
         const base = nights * room.price_per_night;
         const discount = (base * discountPercent) / 100;
         const discounted = base - discount;
-        const tax = discounted * 0.18;
+        const tax = discounted * 0.18; // Standard 18% hospitality tax
         const total = discounted + tax;
 
         return { base, tax, total, discount, nights };
     };
 
+    // Complete reservation and submit to backend
     const handlePayment = async () => {
         if (!room || !dateRange?.from || !dateRange?.to) return;
         if (!guestName || !guestEmail) {
@@ -193,6 +211,7 @@ export const CheckoutPage = () => {
             year: "numeric",
         });
 
+    // Render Confirmation Receipt View
     if (successBookingId) {
         return (
             <div className="min-h-screen bg-slate-50 flex items-center justify-center p-4">
@@ -266,7 +285,6 @@ export const CheckoutPage = () => {
                                     label="Full Name"
                                     value={guestName}
                                     onChange={(e) => setGuestName(e.target.value)}
-                                    placeholder="John Doe"
                                     required
                                 />
                                 <Input
@@ -274,7 +292,6 @@ export const CheckoutPage = () => {
                                     type="email"
                                     value={guestEmail}
                                     onChange={(e) => setGuestEmail(e.target.value)}
-                                    placeholder="john@example.com"
                                     required
                                 />
                                 <Input
@@ -282,7 +299,6 @@ export const CheckoutPage = () => {
                                     type="tel"
                                     value={guestPhone}
                                     onChange={(e) => setGuestPhone(e.target.value)}
-                                    placeholder="+91 9876543210"
                                 />
                                 <Input
                                     label="Number of Guests"
@@ -433,10 +449,6 @@ export const CheckoutPage = () => {
                                     <CreditCard className="mr-2 h-5 w-5" />
                                     {processing ? "Processing..." : `Confirm & Pay ₹${total.toLocaleString("en-IN", { maximumFractionDigits: 0 })}`}
                                 </Button>
-
-                                <p className="text-xs text-center text-slate-500">
-                                    🔒 Instant Confirmation & RBAC Managed Booking
-                                </p>
                             </div>
                         </div>
                     </div>

@@ -1,59 +1,60 @@
+/**
+ * ==============================================================================
+ * PROTECTED ROUTE COMPONENT (Client-Side RBAC Guard)
+ * ==============================================================================
+ * Wraps protected views (e.g. `/admin`, `/bookings`).
+ * 1. Checks if the user is authenticated; redirects to `/login` if not.
+ * 2. Checks if the user's role satisfies `allowedRoles`; renders 403 screen if unauthorized.
+ */
+
 import React from 'react';
-import { Navigate, Outlet, useLocation, Link } from 'react-router-dom';
+import { Navigate, useLocation, Link } from 'react-router-dom';
 import { useAuth } from '../../hooks/useAuth';
-import { ShieldAlert, ArrowLeft } from 'lucide-react';
+import { ShieldAlert } from 'lucide-react';
 import { Button } from '../ui/Button';
 
 interface ProtectedRouteProps {
-  allowedRoles?: string[];
-  redirectTo?: string;
-  children?: React.ReactNode;
+  children: React.ReactNode;
+  allowedRoles?: ('customer' | 'staff' | 'hotel_manager' | 'super_admin' | string)[];
 }
 
-export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
-  allowedRoles,
-  redirectTo = '/login',
-  children,
-}) => {
-  const { user, profile, loading } = useAuth();
+export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ children, allowedRoles }) => {
+  const { user, loading } = useAuth();
   const location = useLocation();
 
+  // Show loading spinner while determining auth state
   if (loading) {
     return (
-      <div className="min-h-[60vh] flex flex-col items-center justify-center">
-        <div className="w-10 h-10 border-4 border-primary border-t-transparent rounded-full animate-spin"></div>
-        <p className="mt-4 text-sm text-slate-500 font-medium">Verifying access permissions...</p>
+      <div className="min-h-[60vh] flex items-center justify-center">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
       </div>
     );
   }
 
-  // Not logged in
+  // If unauthenticated, redirect to login and preserve the intended destination
   if (!user) {
-    return <Navigate to={redirectTo} state={{ from: location }} replace />;
+    return <Navigate to="/login" state={{ from: location }} replace />;
   }
 
-  // Role check
-  const currentRole = profile?.role || 'customer';
-  if (allowedRoles && allowedRoles.length > 0 && !allowedRoles.includes(currentRole)) {
+  // If specific roles are required, verify user's role
+  if (allowedRoles && allowedRoles.length > 0 && !allowedRoles.includes(user.role)) {
     return (
-      <div className="max-w-md mx-auto my-16 p-8 bg-white rounded-xl shadow-lg border border-red-100 text-center">
-        <div className="w-16 h-16 bg-red-100 text-red-600 rounded-full flex items-center justify-center mx-auto mb-4">
-          <ShieldAlert className="w-8 h-8" />
+      <div className="max-w-md mx-auto my-16 p-8 bg-white border border-red-100 rounded-xl shadow-sm text-center">
+        <div className="w-12 h-12 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4 text-red-600">
+          <ShieldAlert className="w-6 h-6" />
         </div>
-        <h2 className="text-2xl font-bold text-slate-900 mb-2">Access Denied (403)</h2>
-        <p className="text-slate-600 mb-4 text-sm">
-          You are logged in as <span className="font-semibold text-slate-800">{profile?.email || user.email}</span> with role <span className="inline-block bg-slate-100 px-2 py-0.5 rounded text-xs font-mono font-semibold uppercase">{currentRole}</span>, which lacks administrative privileges for this page.
+        <h2 className="text-xl font-bold text-slate-800 mb-2">Access Denied (403)</h2>
+        <p className="text-sm text-slate-600 mb-6">
+          Your account role (<span className="font-semibold text-slate-800">{user.role}</span>) does not have permission to access this administrative area.
         </p>
-        <div className="pt-2 flex justify-center gap-3">
-          <Link to="/">
-            <Button variant="outline" className="flex items-center gap-2">
-              <ArrowLeft className="w-4 h-4" /> Return to Home
-            </Button>
-          </Link>
-        </div>
+        <Link to="/">
+          <Button variant="outline" className="w-full">
+            Return to Homepage
+          </Button>
+        </Link>
       </div>
     );
   }
 
-  return children ? <>{children}</> : <Outlet />;
+  return <>{children}</>;
 };

@@ -1,3 +1,14 @@
+/**
+ * ==============================================================================
+ * BOOKING MODEL (Mongoose Schema)
+ * ==============================================================================
+ * Manages guest reservations, dates, pricing, payment state, and stay lifecycle.
+ * Links to:
+ * - Hotel (ObjectId reference)
+ * - Room (ObjectId reference)
+ * - User (Optional ObjectId reference for registered customers or guests)
+ */
+
 import mongoose from 'mongoose';
 
 const bookingSchema = new mongoose.Schema(
@@ -15,7 +26,7 @@ const bookingSchema = new mongoose.Schema(
     user: {
       type: mongoose.Schema.Types.ObjectId,
       ref: 'User',
-      default: null,
+      default: null, // Nullable for guest checkouts
     },
     check_in_date: {
       type: String,
@@ -31,7 +42,7 @@ const bookingSchema = new mongoose.Schema(
     },
     status: {
       type: String,
-      enum: ['pending_payment', 'confirmed', 'cancelled', 'checked_in', 'checked_out'],
+      enum: ['pending_payment', 'confirmed', 'checked_in', 'checked_out', 'cancelled'],
       default: 'confirmed',
     },
     guest_name: {
@@ -46,13 +57,23 @@ const bookingSchema = new mongoose.Schema(
       type: String,
       default: '',
     },
+    room_number: {
+      type: String,
+      default: '',
+    },
+    special_requests: {
+      type: String,
+      default: '',
+    },
     payment_status: {
       type: String,
-      enum: ['pending', 'paid', 'failed', 'refunded'],
+      enum: ['pending', 'paid', 'refunded', 'failed'],
       default: 'paid',
     },
   },
-  { timestamps: true }
+  {
+    timestamps: true, // Automatically manages createdAt and updatedAt
+  }
 );
 
 export const Booking = mongoose.model('Booking', bookingSchema);

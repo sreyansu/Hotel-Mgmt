@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { api } from '../lib/api';
 import { Button } from '../components/ui/Button';
 import { useParams, useNavigate, useLocation } from 'react-router-dom';
-import { MapPin, Users, Check } from 'lucide-react';
+import { MapPin, Users, ArrowLeft, Check } from 'lucide-react';
 import { DateRangePicker } from '../components/ui/DateRangePicker';
 import type { DateRange } from 'react-day-picker';
 
@@ -48,7 +48,12 @@ export const HotelDetailsPage = () => {
                 to: new Date(checkOut)
             };
         }
-        return undefined;
+        
+        // Smart default: Tomorrow to 3 days later
+        const today = new Date();
+        const checkInDate = new Date(today.getFullYear(), today.getMonth(), today.getDate() + 1);
+        const checkOutDate = new Date(today.getFullYear(), today.getMonth(), today.getDate() + 4);
+        return { from: checkInDate, to: checkOutDate };
     });
 
     const navigate = useNavigate();
@@ -64,10 +69,12 @@ export const HotelDetailsPage = () => {
                 setError('Hotel not found');
             } else {
                 setHotel(data.hotel);
+                const rawRooms = data.rooms || data.hotel.rooms || [];
                 setRooms(
-                    (data.rooms || []).map((room: any) => ({
+                    rawRooms.map((room: any) => ({
                         ...room,
-                        available: true,
+                        id: room.id || room._id,
+                        available: room.available !== undefined ? room.available : ((room.total_units ?? 1) > 0),
                     }))
                 );
             }
@@ -79,13 +86,15 @@ export const HotelDetailsPage = () => {
     };
 
     const handleBookRoom = (roomId: string) => {
-        if (!dateRange?.from || !dateRange?.to) {
-            alert('Please select check-in and check-out dates first.');
-            return;
-        }
-        // Navigate to checkout with room query param
-        const checkInStr = dateRange.from.toISOString();
-        const checkOutStr = dateRange.to.toISOString();
+        const today = new Date();
+        const defaultCheckIn = new Date(today.getFullYear(), today.getMonth(), today.getDate() + 1);
+        const defaultCheckOut = new Date(today.getFullYear(), today.getMonth(), today.getDate() + 4);
+
+        const checkInDate = dateRange?.from || defaultCheckIn;
+        const checkOutDate = dateRange?.to || defaultCheckOut;
+
+        const checkInStr = checkInDate.toISOString();
+        const checkOutStr = checkOutDate.toISOString();
         navigate(`/checkout?roomId=${roomId}&checkIn=${checkInStr}&checkOut=${checkOutStr}`);
     };
 
@@ -95,7 +104,7 @@ export const HotelDetailsPage = () => {
     return (
         <div className="container mx-auto px-4 py-8">
             <Button variant="ghost" className="mb-4 pl-0 hover:bg-transparent hover:text-primary" onClick={() => navigate(-1)}>
-                <Check className="h-4 w-4 mr-2 rotate-180" /> Back {/* Check icon usually isn't back, using ArrowLeft if available or generic */}
+                <ArrowLeft className="h-4 w-4 mr-2" /> Back
             </Button>
             {/* Hotel Header */}
             <div className="mb-8">

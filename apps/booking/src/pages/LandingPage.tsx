@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { api } from '../lib/api';
 import { Button } from '../components/ui/Button';
 import { Link, useNavigate } from 'react-router-dom';
-import { Search, MapPin, Calendar } from 'lucide-react';
+import { Search, MapPin } from 'lucide-react';
 import { DateRangePicker } from '../components/ui/DateRangePicker';
 import type { DateRange } from 'react-day-picker';
 import { format } from 'date-fns';
@@ -31,7 +31,7 @@ export const LandingPage = () => {
         try {
             const data = await api.get('/hotels');
             if (data?.hotels) {
-                setFeaturedHotels(data.hotels.slice(0, 3));
+                setFeaturedHotels(data.hotels.slice(0, 6));
             }
         } catch (err) {
             console.error('Error fetching hotels:', err);
@@ -72,7 +72,7 @@ export const LandingPage = () => {
                         Find Your <span className="text-transparent bg-clip-text bg-gradient-to-r from-blue-200 to-white">Perfect Stay</span>
                     </h1>
                     <p className="text-xl md:text-2xl text-slate-200 mb-12 max-w-2xl mx-auto font-light leading-relaxed animate-fade-in-up delay-200">
-                        Experience world-class luxury and comfort at our exclusive selection of grand hotels across the globe.
+                        Experience world-class luxury and royal comfort at our signature PARADISE Palace Hotels across premier destinations.
                     </p>
 
                     <form onSubmit={handleSearch} className="bg-white/10 backdrop-blur-md p-6 rounded-2xl border border-white/20 shadow-2xl max-w-4xl mx-auto flex flex-col md:flex-row gap-4 items-end text-left animate-fade-in-up delay-300">
@@ -107,35 +107,7 @@ export const LandingPage = () => {
                 </div>
             </section>
 
-            {/* Values Section */}
-            <section className="py-24 bg-white">
-                <div className="container mx-auto px-4">
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-12 text-center">
-                        <div className="p-6 rounded-2xl bg-slate-50 border border-slate-100 hover:shadow-xl transition-all duration-300 group cursor-default">
-                            <div className="w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-6 group-hover:bg-blue-600 transition-colors duration-300">
-                                <MapPin className="h-8 w-8 text-blue-600 group-hover:text-white transition-colors" />
-                            </div>
-                            <h3 className="text-xl font-bold mb-3 text-slate-900">Prime Locations</h3>
-                            <p className="text-slate-600 leading-relaxed">Handpicked hotels in the most exclusive and desirable destinations.</p>
-                        </div>
-                        <div className="p-6 rounded-2xl bg-slate-50 border border-slate-100 hover:shadow-xl transition-all duration-300 group cursor-default">
-                            <div className="w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-6 group-hover:bg-blue-600 transition-colors duration-300">
-                                <Calendar className="h-8 w-8 text-blue-600 group-hover:text-white transition-colors" />
-                            </div>
-                            <h3 className="text-xl font-bold mb-3 text-slate-900">Instant Booking</h3>
-                            <p className="text-slate-600 leading-relaxed">Secure your stay instantly with our seamless booking experience.</p>
-                        </div>
-                        <div className="p-6 rounded-2xl bg-slate-50 border border-slate-100 hover:shadow-xl transition-all duration-300 group cursor-default">
-                            <div className="w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-6 group-hover:bg-blue-600 transition-colors duration-300">
-                                <Search className="h-8 w-8 text-blue-600 group-hover:text-white transition-colors" />
-                            </div>
-                            <h3 className="text-xl font-bold mb-3 text-slate-900">Best Price Guarantee</h3>
-                            <p className="text-slate-600 leading-relaxed">We ensure you get the best rates for your luxury accommodation.</p>
-                        </div>
-                    </div>
-                </div>
-            </section>
-
+            
             {/* Featured Hotels */}
             <section className="py-20 bg-slate-50">
                 <div className="container mx-auto px-4">
@@ -163,7 +135,7 @@ export const LandingPage = () => {
                                     <div className="p-4 flex justify-between items-center bg-white border-t border-slate-100">
                                         <div>
                                             <p className="text-xs text-slate-500 font-medium uppercase">Starting from</p>
-                                            <p className="text-lg font-bold text-primary">Check Availability</p>
+                                            <p className="text-lg font-bold text-primary">₹{(hotel.starting_price || 4500).toLocaleString('en-IN')}<span className="text-xs font-normal text-slate-500">/night</span></p>
                                         </div>
                                         <Button variant="outline" size="sm">View Details</Button>
                                     </div>

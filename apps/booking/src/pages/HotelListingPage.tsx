@@ -3,7 +3,7 @@ import { api } from '../lib/api';
 import { Button } from '../components/ui/Button';
 import { Input } from '../components/ui/Input';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
-import { MapPin, Search, Filter } from 'lucide-react';
+import { MapPin, Search, Filter, ArrowLeft } from 'lucide-react';
 
 interface Hotel {
     id: string;
@@ -58,8 +58,8 @@ export const HotelListingPage = () => {
 
     return (
         <div className="container mx-auto px-4 py-8">
-            <Button variant="ghost" className="mb-4 pl-0 hover:bg-transparent hover:text-primary" onClick={() => navigate('/')}>
-                &larr; Back to Home
+            <Button variant="ghost" className="mb-4 pl-0 hover:bg-transparent hover:text-primary flex items-center gap-2" onClick={() => navigate('/')}>
+                <ArrowLeft className="h-4 w-4" /> Back to Home
             </Button>
             {/* Search Header */}
             <div className="mb-8 bg-white p-6 rounded-lg shadow-sm border border-slate-100">
@@ -112,7 +112,7 @@ export const HotelListingPage = () => {
 
                                 <div className="mt-auto pt-4 border-t border-slate-100 flex justify-between items-center">
                                     <div className="text-xs text-slate-500">
-                                        From <span className="text-lg font-bold text-slate-900">₹2,499</span>/night
+                                        From <span className="text-lg font-bold text-slate-900">₹{(hotel.starting_price || 4500).toLocaleString('en-IN')}</span>/night
                                     </div>
                                     <Button size="sm">View Details</Button>
                                 </div>

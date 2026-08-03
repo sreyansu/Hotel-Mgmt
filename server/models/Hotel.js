@@ -1,3 +1,11 @@
+/**
+ * ==============================================================================
+ * HOTEL MODEL (Mongoose Schema)
+ * ==============================================================================
+ * Represents property listings within the hotel chain.
+ * Fields include slug for SEO-friendly URLs, amenities, address, and ratings.
+ */
+
 import mongoose from 'mongoose';
 
 const hotelSchema = new mongoose.Schema(
@@ -6,6 +14,7 @@ const hotelSchema = new mongoose.Schema(
       type: String,
       required: true,
       unique: true,
+      lowercase: true,
       trim: true,
     },
     name: {
@@ -19,7 +28,7 @@ const hotelSchema = new mongoose.Schema(
     },
     address: {
       type: String,
-      default: '',
+      required: true,
     },
     images: {
       type: [String],
@@ -37,8 +46,16 @@ const hotelSchema = new mongoose.Schema(
       type: String,
       default: '',
     },
+    rating: {
+      type: Number,
+      default: 4.8,
+      min: 1,
+      max: 5,
+    },
   },
-  { timestamps: true }
+  {
+    timestamps: true, // Automatically manages createdAt and updatedAt
+  }
 );
 
 export const Hotel = mongoose.model('Hotel', hotelSchema);

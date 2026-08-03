@@ -1,20 +1,19 @@
-# 🏨 Grand Palace - Hotel Management & Booking System
+# 🏨 PARADISE Palace Hotels - Hotel Management & Booking System
 
-A full-stack Hotel Booking & Management platform built with **React (Vite)**, **Node.js / Express**, and **MongoDB (Mongoose)** featuring unified **Role-Based Access Control (RBAC)**.
+A full-stack Hotel Booking & Management platform built with **React (Vite)**, **Node.js / Express**, and **MongoDB (Mongoose)** featuring unified **Role-Based Access Control (RBAC)** and specialized operational dashboards.
 
 ---
 
 ## 🌟 Key Highlights
 
-- **Unified Admin & Customer App:** A single frontend application where administrative controls (`/admin`) and customer interfaces seamlessly coexist, protected by strict client-side Route Guards and server-side JWT RBAC middleware.
-- **MongoDB & Mongoose Architecture:** Clean, scalable NoSQL document schemas for Users, Hotels, Rooms, Bookings, and Coupons.
-- **JWT & Role-Based Access Control:** Secure authentication supporting 4 distinct roles:
-  - `super_admin`: Full system control, property management, coupon generation, reservation overrides.
-  - `hotel_manager`: Hotel & room inventory management, booking status updates.
-  - `staff`: Guest check-in/check-out operations and booking lookup.
-  - `customer`: Browse luxury resorts, apply discount promo codes, book rooms, and view personal reservations.
-- **Real-Time Coupon Engine:** Instant discount calculation and validation engine (e.g., `WELCOME10`, `SUMMER20`, `LUXURY25`).
-- **Modern Responsive UI:** Built with Tailwind CSS, Lucide icons, and React Day Picker.
+- **Specialized Operational Dashboards (`/admin`):**
+  - **Front Desk Operations Desk:** Real-time Room Board (Rooms 101–304) with Housekeeping Status cyclers (`Clean`, `Dirty`, `Cleaning`), live guest arrival/departure queues, room key assignment, and special concierge requests.
+  - **Hotel Manager Portal:** Executive financial performance analytics (Occupancy % gauge, Total Property Revenue, Average Daily Rate / ADR), Dynamic Suite Pricing Controller (+₹500 / -₹500 surge rate adjusters), and inventory controls.
+  - **Super Admin Command Center:** Multi-hotel portfolio overview across India (6 luxury properties), Global reservations master ledger, promo discount campaigns, and RBAC team provisioning.
+- **Unified Customer Portal:** Browse luxury resorts across India (Delhi, Goa, Jaipur, Mumbai, Udaipur, Manali), apply real-time discount coupons, and view booking history in `My Bookings` (`/bookings`).
+- **Two-Step Role Selection Auth:** Clean single-row role selector on `/login` with instant demo credentials for rapid testing.
+- **MongoDB & Mongoose Architecture:** Clean NoSQL document schemas for Users, Hotels, Rooms, Bookings, and Coupons.
+- **JWT & RBAC Security:** Express middleware pipeline (`authenticate` + `authorizeRoles`) enforcing strict access tiers.
 
 ---
 
@@ -26,19 +25,25 @@ Hotel-Mgmt/
 │   └── booking/               # React + Vite Frontend
 │       ├── src/
 │       │   ├── components/    # Reusable UI components & ProtectedRoute
-│       │   ├── hooks/         # useAuth hook with role state
+│       │   ├── hooks/         # useAuth hook with global AuthContext
 │       │   ├── lib/           # Centralized API client (api.ts)
-│       │   └── pages/         # Landing, Listing, Details, Checkout, Admin, Auth
+│       │   └── pages/         # AdminDashboardPage, HotelListingPage, HotelDetailsPage, LoginPage, etc.
 │       ├── package.json
 │       └── vite.config.ts
-└── server/                    # Node.js + Express + MongoDB Backend
-    ├── config/                # MongoDB connection setup
-    ├── middleware/            # JWT authentication & authorizeRoles (RBAC)
-    ├── models/                # User, Hotel, Room, Booking, Coupon schemas
-    ├── routes/                # REST API endpoints (Auth, Hotels, Bookings, Coupons)
-    ├── seed.js                # Database seeder with demo accounts & properties
-    ├── server.js              # Express app entry point
-    └── package.json
+├── server/                    # Node.js + Express + MongoDB Backend
+│   ├── config/                # MongoDB connection setup
+│   ├── middleware/            # JWT authentication & authorizeRoles (RBAC)
+│   ├── models/                # User, Hotel, Room, Booking, Coupon schemas
+│   ├── routes/                # REST API endpoints (Auth, Hotels, Bookings, Coupons)
+│   ├── seed.js                # Database seeder with 6 properties, rooms, 4 demo accounts & coupons
+│   ├── server.js              # Express app entry point (Port 5001)
+│   └── package.json
+├── context.md                 # System Architecture & Context Documentation
+├── api_routes.md              # Complete REST API reference & test payloads
+├── server.md                  # Database Schemas & Mongoose Data Model
+├── middleware.md              # Auth & Security Middleware deep dive
+├── handsoff.md                # Project Handover & Setup Guide
+└── interview_prep.md          # Technical Interview Preparation Guide
 ```
 
 ---
@@ -51,33 +56,31 @@ Hotel-Mgmt/
 
 ---
 
-### 2. Backend Setup (`server/`)
+### 2. Running Backend & Frontend in Parallel
+
+From the workspace root directory:
 
 ```bash
-cd server
-npm install
-node seed.js    # Populates sample hotels, rooms, coupons & admin/customer accounts
-npm run dev     # Starts Express API on http://localhost:5001
+# 1. Start MongoDB (if not already running)
+brew services start mongodb-community
+
+# 2. Run both Backend & Frontend:
+npm run dev
 ```
 
----
-
-### 3. Frontend Setup (`apps/booking/`)
-
-```bash
-cd apps/booking
-npm install
-npm run dev     # Starts Vite dev server on http://localhost:5173
-```
+- **Frontend App**: `http://localhost:5173`
+- **Backend API**: `http://localhost:5001/api`
 
 ---
 
 ## 🔑 Demo Credentials (Seeded)
 
-| Role | Email | Password | Access Level |
+| Role | Email | Password | Access Area |
 | :--- | :--- | :--- | :--- |
-| **Super Admin** | `admin@grandpalace.com` | `admin123` | Full Admin Dashboard (`/admin`), Revenue Stats, Inventory, Coupons |
-| **Customer** | `customer@example.com` | `customer123` | Hotel Booking, Checkout, My Reservations (`/bookings`) |
+| **Super Admin** | `admin@grandhotels.com` | `admin@123` | Full Portfolio Admin Dashboard (`/admin`), Revenue Stats, Team Provisioning |
+| **Hotel Manager** | `manager@grandhotels.com` | `manager@123` | Hotel Manager Portal (`/admin`), Dynamic Pricing, Occupancy % & ADR KPIs |
+| **Front Desk Staff** | `staff@gmail.com` | `staff@123` | Front Desk Terminal (`/admin`), Room Status Board (101–304), Check-in Queue |
+| **Customer** | `customer@gmail.com` | `customer@123` | Hotel Booking, Checkout, My Bookings (`/bookings`) |
 
 ---
 
@@ -87,23 +90,26 @@ npm run dev     # Starts Vite dev server on http://localhost:5173
 - `POST /api/auth/register` - Create customer account
 - `POST /api/auth/login` - Authenticate & obtain JWT with role payload
 - `GET /api/auth/me` - Fetch authenticated user profile
+- `PUT /api/auth/profile` - Update user profile & avatar
+- `POST /api/auth/admin/create-user` - Provision manager or staff account (*Super Admin*)
 
 ### Hotels & Rooms (`/api/hotels`)
-- `GET /api/hotels` - List all active hotels with starting prices (Public)
+- `GET /api/hotels` - List all active hotels with dynamic starting prices (Public)
 - `GET /api/hotels/:slug` - Get hotel details and associated rooms (Public)
-- `GET /api/hotels/rooms/details/:id` - Get room by ID (Public)
-- `GET /api/hotels/admin/rooms` - All rooms across portfolio (*Admin/Staff*)
-- `POST /api/hotels` - Create property (*Super Admin/Manager*)
-- `POST /api/hotels/rooms` - Create room (*Super Admin/Manager*)
+- `POST /api/hotels` - Create new property (*Super Admin / Manager*)
+- `POST /api/hotels/rooms` - Create new room category (*Super Admin / Manager*)
+- `PATCH /api/hotels/rooms/:id` - Dynamic room rate & inventory unit updates (*Super Admin / Manager*)
+- `DELETE /api/hotels/rooms/:id` - Delete room suite (*Super Admin / Manager*)
 
 ### Bookings & Reservations (`/api/bookings`)
-- `POST /api/bookings` - Create reservation & instant confirmation (Public/Customer)
+- `POST /api/bookings` - Create reservation & instant confirmation (Public / Customer)
 - `GET /api/bookings/my-bookings` - Fetch customer's personal bookings (*Customer*)
-- `GET /api/bookings/admin/all` - View all reservations across properties (*Admin/Staff*)
-- `PATCH /api/bookings/admin/:id/status` - Update reservation status (*Admin/Staff*)
+- `GET /api/bookings/admin/all` - View all reservations across properties (*Admin / Staff*)
+- `PATCH /api/bookings/admin/:id/status` - Update reservation status (*Admin / Staff*)
+- `PATCH /api/bookings/admin/:id/details` - Assign room number & log concierge notes (*Admin / Staff*)
 
 ### Coupons & Discounts (`/api/coupons`)
-- `GET /api/coupons/validate/:code` - Validate promo code (Public)
-- `GET /api/coupons/admin/all` - List all coupons (*Admin/Staff*)
-- `POST /api/coupons/admin` - Create new coupon (*Admin/Manager*)
-- `PATCH /api/coupons/admin/:code/toggle` - Toggle active/inactive (*Admin/Manager*)
+- `POST /api/coupons/validate` - Validate promo code (Public)
+- `GET /api/coupons/admin/all` - List all coupons (*Admin / Staff*)
+- `POST /api/coupons/admin` - Create new coupon (*Super Admin*)
+- `PATCH /api/coupons/admin/:code/toggle` - Toggle active/inactive (*Super Admin*)

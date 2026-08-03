@@ -1,3 +1,14 @@
+/**
+ * ==============================================================================
+ * MY BOOKINGS PAGE (`/bookings`)
+ * ==============================================================================
+ * Displays the reservation history and active stays for the authenticated customer.
+ * Features:
+ * - Fetches reservations from `/api/bookings/my-bookings`.
+ * - Status tags with color indicators (Confirmed, Checked In, Checked Out, Cancelled).
+ * - Room and property details with dates and payment confirmation.
+ */
+
 import { useEffect, useState } from 'react';
 import { api } from '../lib/api';
 import { Button } from '../components/ui/Button';
@@ -35,6 +46,7 @@ export const MyBookingsPage = () => {
         fetchMyBookings();
     }, []);
 
+    // Retrieve user's personal booking history
     const fetchMyBookings = async () => {
         try {
             const data = await api.get('/bookings/my-bookings');
@@ -48,6 +60,7 @@ export const MyBookingsPage = () => {
         }
     };
 
+    // Helper to render stylish status badge
     const getStatusBadge = (status: string) => {
         switch (status) {
             case 'confirmed':

@@ -1,8 +1,5 @@
-# Frontend App-specific ignores
+# Server-specific ignores
 node_modules/
-dist/
-dist-ssr/
-*.local
 .env
 .env.*
 !.env.example

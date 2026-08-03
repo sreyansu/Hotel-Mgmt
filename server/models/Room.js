@@ -1,3 +1,11 @@
+/**
+ * ==============================================================================
+ * ROOM MODEL (Mongoose Schema)
+ * ==============================================================================
+ * Represents individual room categories associated with a Hotel property.
+ * Links to Hotel via ObjectId foreign reference.
+ */
+
 import mongoose from 'mongoose';
 
 const roomSchema = new mongoose.Schema(
@@ -19,10 +27,12 @@ const roomSchema = new mongoose.Schema(
     price_per_night: {
       type: Number,
       required: true,
+      min: 0,
     },
     capacity: {
       type: Number,
       default: 2,
+      min: 1,
     },
     images: {
       type: [String],
@@ -34,10 +44,13 @@ const roomSchema = new mongoose.Schema(
     },
     total_units: {
       type: Number,
-      default: 1,
+      default: 5,
+      min: 1,
     },
   },
-  { timestamps: true }
+  {
+    timestamps: true,
+  }
 );
 
 export const Room = mongoose.model('Room', roomSchema);
