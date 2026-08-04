@@ -8,17 +8,60 @@
 
 ---
 
-## 2. Core Architecture & Database Questions
+## 2. Core Engineering Fundamentals & Tech Stack Decisions
 
-### Q1: Why did you choose MongoDB over a relational database like PostgreSQL for this project?
+### Q1: What is Node.js, how does its Event Loop work, and why did you choose it for this backend?
 **Answer**:
-- **Document Flexibility**: Hospitality properties possess heterogeneous amenities, dynamic image arrays, and seasonal configurations. A document model natively stores amenities (`['Pool', 'Spa', 'WiFi']`) and image arrays as first-class arrays without requiring multi-table junction joins (`hotel_amenities_bridge`).
-- **Read-Heavy Query Performance**: Browsing hotels with starting room prices is the most frequent query in the system. MongoDB's embedding and referencing capabilities allow single-query page loads with minimal overhead.
-- **Rapid Prototyping & Schema Evolution**: Adding new fields (such as curated person SVG avatars, physical room number assignments, or special concierge notes) requires zero disruptive DDL table migrations.
+- **What Node.js Is**: Node.js is an open-source, cross-platform JavaScript runtime environment built on Google Chrome’s high-performance **V8 JavaScript Engine** and the **libuv** asynchronous I/O library.
+- **The Event Loop & Non-Blocking I/O Architecture**:
+  - Traditional web servers (like Java/Apache or PHP) spawn a new OS thread per incoming request, which consumes memory (~1–2MB per thread) and idles while waiting on disk/database queries.
+  - Node.js operates on a **single-threaded Event Loop** for JavaScript execution, while offloading expensive I/O operations (MongoDB network queries, file streaming, DNS lookups) to the background **libuv Thread Pool** (C++ worker threads).
+  - When the database responds, `libuv` pushes the callback to the Event Loop’s Task/Microtask Queue, which executes the handler without ever blocking incoming HTTP connections.
+- **Why Node.js was Chosen for PARADISE Palace**:
+  1. **High Concurrency on I/O-Bound Workloads**: A hotel booking engine is fundamentally I/O-bound (reading hotel catalogs, checking room availability dates, persisting reservations). Node handles thousands of concurrent requests with minimal RAM footprint.
+  2. **Unified Full-Stack JavaScript (MERN Stack)**: Sharing JavaScript/TypeScript across both frontend (React 18 + Vite) and backend (Node + Express) eliminates context switching, allows shared data validation schemas, and accelerates development speed.
+  3. **Rich NPM Ecosystem**: Seamless integration with battle-tested packages (`mongoose`, `jsonwebtoken`, `bcryptjs`, `cors`).
 
 ---
 
-### Q2: Embedded Documents vs. Object References — What was your schema design strategy?
+### Q2: What is Express.js, and why do we use Express instead of the built-in Node.js `http` module?
+**Answer**:
+- **What Express.js Is**: Express is a fast, minimalist, and unopinionated web application framework for Node.js that serves as the de facto routing and middleware layer.
+- **Why Not the Built-in Node.js `http` Module?**:
+  - In raw Node (`http.createServer()`), handling an HTTP endpoint requires tedious low-level boilerplate:
+    - Manual request stream buffering (`req.on('data', chunk)` and `req.on('end')`).
+    - Manual URL parsing and regex matching for path parameters (`/api/hotels/:id`).
+    - Manual MIME type, CORS, and status code header setting.
+    - No standardized middleware pipeline or error forwarding convention.
+- **Key Advantages Express Provides in This Project**:
+  1. **Declarative Routing & Grouping**: Modular route controllers (`router.use('/api/hotels', hotelRoutes)`).
+  2. **The Middleware Pipeline**: Clean `(req, res, next)` execution chain for authentication, CORS, and body parsing.
+  3. **Robust Parameter Extraction**: Instant access to `req.params`, `req.query`, and `req.body`.
+  4. **Centralized Error Handling**: Standard 4-parameter `(err, req, res, next)` error filter that catches all server exceptions in one place.
+
+---
+
+### Q3: Why NoSQL (MongoDB) over Relational SQL (PostgreSQL / MySQL) for this Hotel Management Platform? (Deep Architectural Comparison)
+**Answer**:
+Choosing MongoDB over a relational database like PostgreSQL was a conscious architectural trade-off based on data shape, query patterns, and schema evolution:
+
+| Dimension | MongoDB (Document NoSQL) | PostgreSQL / MySQL (Relational SQL) |
+|---|---|---|
+| **Data Model** | JSON/BSON documents matching application objects | Rigid tables with fixed columns and strict foreign key constraints |
+| **Hotel Catalog Schema** | **Polymorphic & Dynamic**: Luxury suites have heterogeneous amenities, variable SVG gallery arrays, seasonal rate configurations, and custom badges stored natively as nested documents and arrays. | Requires multiple normalized bridge tables (`hotels`, `hotel_amenities`, `amenity_types`, `hotel_images`) or anti-patterns like Entity-Attribute-Value (EAV). |
+| **Read Query Latency** | **Single $O(1)$ Document Fetch**: Browsing hotel details with all room suites, amenities, and photos requires 1 single indexed query without JOINs. | Requires an expensive 4-table `JOIN` query, increasing database CPU utilization and network overhead during high-traffic browsing. |
+| **Schema Evolution** | **Zero-Downtime Iteration**: Adding new features (e.g. concierge notes, SVG avatars, physical room assignments) requires zero blocking `ALTER TABLE` table locks or downtime. | Requires structured database migrations (`DDL`), table locks, and migration scripts. |
+| **Horizontal Scalability** | **Native Sharding**: MongoDB natively partitions collections across clusters using shard keys (e.g. `hotel_id` or `city`). | Sharding relational databases across regions is complex, requiring distributed SQL engines (e.g. Citus, CockroachDB). |
+
+- **When WOULD you choose SQL over NoSQL? (Engineering Maturity)**:
+  - If building an enterprise core banking transaction ledger or double-entry accounting ledger where strict relational foreign key enforcement, multi-table cascade updates, and multi-entity cross-table joins are mandatory.
+  - For PARADISE Palace, MongoDB provides native JSON/BSON synergy with Express/React and superior performance for read-heavy hotel catalog searches.
+
+---
+
+## 3. Database Design & MongoDB Deep Dive
+
+### Q4: Embedded Documents vs. Object References — What was your schema design strategy?
 **Answer**:
 - **Referencing (`ObjectId` with `ref`)** was used for high-cardinality and independently queried entities:
   - `Booking -> Hotel, Room, User`: Bookings grow indefinitely. Embedding all bookings inside a `Hotel` document would violate MongoDB's 16MB document limit and cause severe document growth fragmentation.
@@ -28,7 +71,7 @@
 
 ---
 
-### Q3: What MongoDB indexes did you or would you establish to ensure sub-millisecond query performance?
+### Q5: What MongoDB indexes did you or would you establish to ensure sub-millisecond query performance?
 **Answer**:
 1. **Compound Index for Room Availability & Pricing**:
    ```javascript
@@ -49,9 +92,9 @@
 
 ---
 
-## 3. RBAC, Security & API Design
+## 4. RBAC, Security & API Design
 
-### Q4: How did you differentiate the Front Desk dashboard from the Hotel Manager dashboard?
+### Q6: How did you differentiate the Front Desk dashboard from the Hotel Manager dashboard?
 **Answer**:
 - **Front Desk (Tactical Operations)**:
   - Focuses on real-time guest flow: arrivals, departures, in-house guests, and ready rooms.
@@ -64,7 +107,38 @@
 
 ---
 
-### Q5: How did you implement Role-Based Access Control (RBAC) in Express?
+### Q7: What is Middleware in Express, and what role does it play across the architecture of this project?
+**Answer**:
+- **What is Middleware**: In Node.js/Express, a middleware function is an intermediate handler in the **Request-Response pipeline** with the signature `(req, res, next) => { ... }`. It sits between the incoming HTTP request and the final controller handler, capable of:
+  1. Inspecting and modifying `req` and `res` objects (e.g., parsing bodies, decoding JWTs and attaching `req.user`).
+  2. Terminating the request early if checks fail (e.g., returning `401 Unauthorized` or `403 Forbidden`).
+  3. Invoking `next()` to pass execution down the stack, or `next(err)` to trigger the error pipeline.
+
+- **The Complete Middleware Pipeline in PARADISE Palace**:
+  ```
+  Incoming Request ──► [cors] ──► [express.json] ──► [authenticate] ──► [authorizeRoles] ──► [asyncHandler(Controller)]
+                                                                                                    │ (on error)
+                                                                                                    ▼
+                                                                                         [globalErrorHandler]
+  ```
+
+- **Project Middleware Manifest**:
+  1. **`cors()`** (`server.js`): Cross-Origin Resource Sharing guard allowing the Vite React SPA (`localhost:5173`) to communicate with the Express API (`localhost:5001`) and handling preflight `OPTIONS`.
+  2. **`express.json()`** (`server.js`): Parses raw incoming JSON request payloads into structured `req.body` objects.
+  3. **`authenticate`** (`middleware/auth.js`): Intercepts `Authorization: Bearer <token>`, verifies the JWT signature, hydrates `req.user` from MongoDB, or rejects with `401`.
+  4. **`optionalAuth`** (`middleware/auth.js`): Permissive auth for `POST /api/bookings` enabling seamless guest checkout while automatically associating bookings for logged-in guests.
+  5. **`authorizeRoles(...roles)`** (`middleware/auth.js`): Closure-based RBAC guard enforcing permissions (e.g. `super_admin`, `hotel_manager`), rejecting unauthorized calls with `403 Forbidden` before database controllers execute.
+  6. **`asyncHandler(fn)`** (`middleware/errorHandler.js`): Higher-order wrapper around async route functions that catches unhandled promise rejections and forwards them to `next(err)`.
+  7. **`globalErrorHandler`** (`middleware/errorHandler.js`): 4-parameter `(err, req, res, next)` centralized middleware formatting Mongoose validation errors, invalid ObjectIds, duplicate keys, and 500s into consistent JSON payloads.
+
+- **Key Architectural Benefits**:
+  - **DRY (Don't Repeat Yourself)**: Authentication and authorization logic are defined once and composed declaratively across 20+ routes.
+  - **Separation of Concerns**: Route handlers focus exclusively on business/database logic, delegating security, parsing, and error filtering to middleware.
+  - **Security Perimeter**: Unauthorized requests are stopped at the network perimeter before executing expensive database queries.
+
+---
+
+### Q8: How did you implement Role-Based Access Control (RBAC) in Express?
 **Answer**:
 - Implemented a two-tiered middleware pipeline in `server/middleware/auth.js`:
   1. `authenticate`: Verifies the incoming `Authorization: Bearer <token>` using `jsonwebtoken`, checks user existence in MongoDB, and attaches the sanitized `req.user` object.
@@ -73,7 +147,7 @@
 
 ---
 
-### Q6: How do you prevent multi-tenant data leaks between different Hotel Managers? (Property Scoping)
+### Q9: How do you prevent multi-tenant data leaks between different Hotel Managers? (Property Scoping)
 **Answer**:
 - Super Admins have unrestricted multi-property access (`hotel_id === null`).
 - For `hotel_manager` and `staff`, all mutation and query routes enforce **property scoping**:
@@ -89,7 +163,7 @@
 
 ---
 
-### Q7: How do you prevent sensitive data leaks (e.g. password hashes) in API responses?
+### Q10: How do you prevent sensitive data leaks (e.g. password hashes) in API responses?
 **Answer**:
 1. **Schema-Level Exclusion**: Marked password fields with `select: false` or explicitly excluded them in Mongoose queries:
    ```javascript
@@ -108,7 +182,7 @@
 
 ---
 
-### Q8: How would you protect JWT tokens against XSS and CSRF attacks in production?
+### Q11: How would you protect JWT tokens against XSS and CSRF attacks in production?
 **Answer**:
 - **Current Development Setup**: Stores JWT in `localStorage` for fast development and stateless testing.
 - **Production Hardening Strategy**:
@@ -118,7 +192,7 @@
 
 ---
 
-### Q9: What are the Frontend and Backend Origins in this project, and how does CORS work between them?
+### Q12: What are the Frontend and Backend Origins in this project, and how does CORS work between them?
 **Answer**:
 - **Definition of an Origin**: An origin is defined by the tuple `(Protocol, Domain/Host, Port)`.
   - **Frontend Origin**: `http://localhost:5173` (React 18 SPA served via Vite).
@@ -144,7 +218,7 @@
 
 ---
 
-### Q10: What are `Access-Control-Allow-Methods` and `Access-Control-Allow-Headers`, and how do they work during a CORS Preflight handshake?
+### Q13: What are `Access-Control-Allow-Methods` and `Access-Control-Allow-Headers`, and how do they work during a CORS Preflight handshake?
 **Answer**:
 When a browser client (`http://localhost:5173`) talks to a cross-origin API (`http://localhost:5001`), it performs an automatic **Preflight Handshake (HTTP `OPTIONS`)** before sending sensitive actions or custom headers. These two headers are the server's explicit answers in that handshake:
 
@@ -186,7 +260,7 @@ When a browser client (`http://localhost:5173`) talks to a cross-origin API (`ht
 
 ---
 
-### Q11: How did you implement Universal Error Handling and eliminate repetitive try-catch blocks across your Express routes?
+### Q14: How did you implement Universal Error Handling and eliminate repetitive try-catch blocks across your Express routes?
 **Answer**:
 - **The Problem**: In standard Express route handlers, every endpoint repeats 6–8 lines of boilerplate `try { ... } catch (error) { res.status(500).json({ message: error.message }); }`. In a 20+ endpoint application, this bloats the codebase, creates code duplication, and risks unhandled promise rejections if any `catch` is forgotten.
 - **The Solution (Higher-Order Wrapper + Custom Error Class + Global Middleware)**:
@@ -220,7 +294,7 @@ When a browser client (`http://localhost:5173`) talks to a cross-origin API (`ht
 
 ---
 
-### Q12: Why did you separate the Public Customer Login (`/login`) from the Internal Staff Portal (`/admin/login`)?
+### Q15: Why did you separate the Public Customer Login (`/login`) from the Internal Staff Portal (`/admin/login`)?
 **Answer**:
 - **User Experience (UX) Principle**: Customers booking luxury stays should never see internal corporate roles ("Super Admin", "Hotel Manager", "Front Desk Staff"). A customer authentication screen must be simple, elegant, and focused exclusively on guest sign-in and guest self-registration.
 - **Security & Attack Surface Reduction**: Exposing internal role names, badge permissions, or demo credentials on public consumer pages leaks system architecture and invites unauthorized credential stuffing.
@@ -231,9 +305,9 @@ When a browser client (`http://localhost:5173`) talks to a cross-origin API (`ht
 
 ---
 
-## 4. Frontend Architecture & React 18 Patterns
+## 5. Frontend Architecture & React 18 Patterns
 
-### Q13: How is state managed on the React frontend to prevent UI desynchronization upon login/logout?
+### Q16: How is state managed on the React frontend to prevent UI desynchronization upon login/logout?
 **Answer**:
 - Implemented an `AuthContext` with a dedicated `useAuth()` hook in `apps/booking/src/hooks/useAuth.tsx`.
 - The `AuthProvider` wraps the entire component tree in `App.tsx`.
@@ -242,7 +316,7 @@ When a browser client (`http://localhost:5173`) talks to a cross-origin API (`ht
 
 ---
 
-### Q14: How do you prevent "Flash of Unauthenticated Content" (FOUC) and unauthorized route access in React Router?
+### Q17: How do you prevent "Flash of Unauthenticated Content" (FOUC) and unauthorized route access in React Router?
 **Answer**:
 - Implemented a reusable `<ProtectedRoute>` component:
   ```tsx
@@ -266,7 +340,7 @@ When a browser client (`http://localhost:5173`) talks to a cross-origin API (`ht
 
 ---
 
-### Q15: How did you implement real-time interactive UI like the Room Status Grid & Housekeeping cyclers without layout thrashing?
+### Q18: How did you implement real-time interactive UI like the Room Status Grid & Housekeeping cyclers without layout thrashing?
 **Answer**:
 - **Optimistic UI Updates**: When staff toggles a room status (`Clean` $\rightarrow$ `Dirty` $\rightarrow$ `Cleaning`), the local React state updates immediately so the UI responds in 0ms.
 - **Background API Sync**: The state change triggers an asynchronous API patch (`PATCH /api/hotels/rooms/:id/status`) in the background. If the request fails, the state automatically reverts to the previous snapshot with a toast notification.
@@ -274,28 +348,123 @@ When a browser client (`http://localhost:5173`) talks to a cross-origin API (`ht
 
 ---
 
-## 5. Payments, Concurrency & E-Commerce Logic
+## 6. Room Inventory, Concurrency & E-Commerce Logic
 
-### Q16: How do you prevent overbooking / race conditions when two users book the last room simultaneously?
+### Q19: How did you prevent multiple bookings for the same date? Explain the overlap algorithm and room inventory architecture.
 **Answer**:
-In production, overbooking is solved using **atomic operations and optimistic concurrency control**:
-1. **Mongoose Atomic Decrement**:
-   ```javascript
-   const room = await Room.findOneAndUpdate(
-     { _id: roomId, total_units: { $gt: 0 } },
-     { $inc: { total_units: -1 } },
-     { new: true }
-   );
-   if (!room) {
-     throw new Error('Room was booked by another guest just a moment ago.');
-   }
-   ```
-2. **Distributed Locks (Redis Redlock)**: For high-throughput flash sales, a distributed lock keyed on `lock:room:${roomId}:${dateRange}` ensures only one booking transaction evaluates room inventory at a time.
-3. **Database Transactions (`mongoose.startSession()`)**: Multi-document transactions guarantee that booking creation, payment verification, and room unit deduction execute atomically or roll back completely.
+Managing room availability and preventing conflicting reservations is handled through an **Overlap Detection Algorithm** coupled with a decoupled **Room Category vs. Physical Unit** inventory model.
+
+#### 1. The Date Overlap Condition
+A new booking request conflicts with an existing reservation if their date intervals overlap:
+
+```
+Existing Booking:
+Check-in ------------------------- Check-out
+New Booking Request:
+             Check-in ------------------------- Check-out
+```
+
+**Mathematical Overlap Rule**:
+$$\text{Overlap} \iff (\text{Existing.CheckIn} < \text{New.CheckOut}) \land (\text{Existing.CheckOut} > \text{New.CheckIn})$$
+
+#### 2. Single-Unit vs. Multiple-Unit Implementation
+
+- **Case A: Single Unique Room / Villa (1 Unit)**:
+  ```javascript
+  const existingBooking = await Booking.findOne({
+    room: roomId,
+    status: { $in: ['confirmed', 'checked_in'] },
+    check_in_date: { $lt: checkOutDate },
+    check_out_date: { $gt: checkInDate }
+  });
+
+  if (existingBooking) {
+    throw new AppError('Room is already booked for the selected dates.', 409);
+  }
+  ```
+
+- **Case B: Room Category with Multiple Units (e.g. Deluxe Suite, `total_units = 10`)**:
+  Instead of blocking on the first booking, count overlapping reservations and compare with inventory:
+  ```javascript
+  const bookedCount = await Booking.countDocuments({
+    room: roomId,
+    status: { $in: ['confirmed', 'checked_in'] },
+    check_in_date: { $lt: checkOutDate },
+    check_out_date: { $gt: checkInDate }
+  });
+
+  if (bookedCount >= room.total_units) {
+    throw new AppError('No suites available in this category for the selected dates.', 409);
+  }
+  ```
+
+#### 3. Front Desk Physical Key Allocation
+- **Public Website**: Guests reserve the **Room Category** (e.g., *"Royal Lake-Facing Suite"* with capacity `total_units: 5`).
+- **Front Desk Operations**: Physical room door keys (`Room 101`, `Room 102`, `Room 201`) are assigned at guest check-in via `PATCH /api/bookings/admin/:id/details`.
 
 ---
 
-### Q17: How did you handle coupon validation and discount calculation?
+### Q20: How do you prevent overbooking / race conditions when two users book the last room simultaneously? (Atomic Transactions & High-Traffic Concurrency)
+**Answer**:
+
+#### 1. The Race Condition Problem (Read-Then-Write Flaw)
+Simply checking availability with `findOne` or `countDocuments` before calling `create()` is vulnerable to race conditions:
+```
+User A: Check availability? (1 room left -> OK)
+User B: Check availability? (1 room left -> OK)
+User A: Reserve Room! (Confirmed)
+User B: Reserve Room! (Confirmed -> OVERBOOKED!)
+```
+
+#### 2. Production Solution: MongoDB Multi-Document Transactions
+Wrap the availability validation and reservation creation in a single atomic database transaction:
+```javascript
+const session = await mongoose.startSession();
+try {
+  session.startTransaction();
+
+  // 1. Check availability inside the transactional snapshot
+  const activeBookings = await Booking.countDocuments({
+    room: roomId,
+    status: { $in: ['confirmed', 'checked_in'] },
+    check_in_date: { $lt: checkOutDate },
+    check_out_date: { $gt: checkInDate }
+  }).session(session);
+
+  const room = await Room.findById(roomId).session(session);
+  if (activeBookings >= room.total_units) {
+    throw new AppError('Room was reserved by another guest just now.', 409);
+  }
+
+  // 2. Create the booking atomically within the same session
+  const [newBooking] = await Booking.create([bookingPayload], { session });
+
+  await session.commitTransaction();
+  return res.status(201).json({ booking: newBooking });
+} catch (error) {
+  await session.abortTransaction();
+  throw error;
+} finally {
+  session.endSession();
+}
+```
+
+#### 3. Scaling for High-Throughput (Flash Sales & 100k+ Users)
+1. **Distributed Locks (Redis Redlock)**: Acquire an exclusive lock `lock:room:${roomId}:${dateRange}` with a 3-second TTL so only one worker process evaluates inventory at any given millisecond.
+2. **Temporary Reservation Holds (10–15 Min Cart Expiry)**: Hold room units in Redis with a TTL while the guest enters card details on Razorpay/Stripe; release automatically if payment is abandoned.
+3. **Optimistic Concurrency Control (OCC)**: Use Mongoose version keys (`__v`) with atomic `$inc: { total_units: -1 }` predicates (`{ _id: roomId, total_units: { $gt: 0 } }`).
+
+---
+
+### 💡 Golden Interview Pitch (Memorize This!)
+
+> *"The backend validates availability before creating a booking by checking for overlapping reservations for the selected room and date range. A booking is considered conflicting if an existing reservation's check-in date is before the new check-out date and its check-out date is after the new check-in date.*
+>
+> *For room categories with multiple units, the system counts overlapping bookings and compares them with the available inventory. In a production environment, I wrap the availability check and booking creation in a MongoDB transaction with distributed Redis locks to prevent race conditions when multiple users attempt to book simultaneously."*
+
+---
+
+### Q21: How did you handle coupon validation and discount calculation?
 **Answer**:
 - Coupon codes are normalized to uppercase and validated via `POST /api/coupons/validate`.
 - The server checks:
@@ -306,7 +475,7 @@ In production, overbooking is solved using **atomic operations and optimistic co
 
 ---
 
-### Q18: How would you integrate Razorpay/Stripe to handle webhooks and prevent double charges?
+### Q22: How would you integrate Razorpay/Stripe to handle webhooks and prevent double charges?
 **Answer**:
 1. **Order Creation**: Client calls backend `POST /api/payments/create-order`. Server creates an order with the payment provider and returns `order_id` and calculated amount.
 2. **Client Checkout**: Client opens Razorpay/Stripe modal and completes checkout.
@@ -317,7 +486,7 @@ In production, overbooking is solved using **atomic operations and optimistic co
 
 ---
 
-## 6. System Architecture & Scenario-Based Questions
+## 7. System Architecture & Scenario-Based Questions
 
 ### Scenario 1: "A customer reports that they applied a coupon code, but their card was charged the full amount. How would you debug this?"
 **Approach**:
@@ -362,9 +531,9 @@ In production, overbooking is solved using **atomic operations and optimistic co
 
 ---
 
-## 7. Behavioral & Engineering Trade-Off Questions (STAR Method)
+## 8. Behavioral & Engineering Trade-Off Questions (STAR Method)
 
-### Q19: "What was the most challenging technical hurdle you faced while building this project and how did you resolve it?"
+### Q23: "What was the most challenging technical hurdle you faced while building this project and how did you resolve it?"
 **Answer**:
 - **Situation**: Designing a unified RBAC system where four distinct user roles shared the same API backend, but required radically different dashboard interfaces without code duplication or state leaks.
 - **Task**: Avoid creating 4 separate web apps while ensuring strict security boundaries and tailored UX for Front Desk vs. Strategic Managers.
@@ -375,7 +544,7 @@ In production, overbooking is solved using **atomic operations and optimistic co
 
 ---
 
-### Q20: "If you had 2 more weeks to work on this platform, what architectural improvements or features would you build next?"
+### Q24: "If you had 2 more weeks to work on this platform, what architectural improvements or features would you build next?"
 **Answer**:
 1. **Automated End-to-End Testing**: Integrate Playwright or Cypress test suites for the entire guest booking flow (Search $\rightarrow$ Select Suite $\rightarrow$ Apply Coupon $\rightarrow$ Checkout $\rightarrow$ Front Desk Check-in).
 2. **Real-Time WebSockets**: Replace manual sync buttons with Socket.io for live instant updates on room availability, new reservations, and housekeeping statuses.
