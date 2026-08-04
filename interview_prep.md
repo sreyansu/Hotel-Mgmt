@@ -118,9 +118,122 @@
 
 ---
 
+### Q9: What are the Frontend and Backend Origins in this project, and how does CORS work between them?
+**Answer**:
+- **Definition of an Origin**: An origin is defined by the tuple `(Protocol, Domain/Host, Port)`.
+  - **Frontend Origin**: `http://localhost:5173` (React 18 SPA served via Vite).
+  - **Backend Origin**: `http://localhost:5001` (Node.js & Express REST API).
+- **The Same-Origin Policy (SOP)**: Web browsers block client-side scripts from reading responses across different origins unless the server explicitly grants permission via HTTP headers. Because port `5173` $\neq$ `5001`, browser requests trigger cross-origin restrictions.
+- **How CORS was Configured**:
+  - Implemented the `cors` middleware in `server/server.js`:
+    ```javascript
+    app.use(cors({
+      origin: '*', // In development: allows requests from Vite (http://localhost:5173)
+      credentials: true,
+    }));
+    ```
+  - For non-simple HTTP requests (such as `PUT`, `PATCH`, `DELETE`, or requests carrying custom headers like `Authorization: Bearer <token>`), the browser automatically sends an initial HTTP `OPTIONS` preflight request. The server responds with `Access-Control-Allow-Origin`, `Access-Control-Allow-Methods`, and `Access-Control-Allow-Headers`.
+- **Production Best Practice**:
+  - In production, replace `origin: '*'` with an exact origin whitelist or environment variable:
+    ```javascript
+    app.use(cors({
+      origin: process.env.CLIENT_ORIGIN || 'https://paradisepalace.com',
+      credentials: true,
+    }));
+    ```
+
+---
+
+### Q10: What are `Access-Control-Allow-Methods` and `Access-Control-Allow-Headers`, and how do they work during a CORS Preflight handshake?
+**Answer**:
+When a browser client (`http://localhost:5173`) talks to a cross-origin API (`http://localhost:5001`), it performs an automatic **Preflight Handshake (HTTP `OPTIONS`)** before sending sensitive actions or custom headers. These two headers are the server's explicit answers in that handshake:
+
+1. **`Access-Control-Allow-Methods`**:
+   - **What it is**: An HTTP response header sent by the backend specifying which HTTP verbs (actions) cross-origin frontends are permitted to execute against the API (e.g. `GET, POST, PUT, PATCH, DELETE, OPTIONS`).
+   - **Why it matters in this project**: Basic browser requests only permit `GET` and `POST`. But our application performs state mutations like dynamic room surge pricing via `PATCH /api/hotels/rooms/:id` or room deletions via `DELETE`.
+   - **How it works**: Before dispatching `PATCH`, the browser fires an `OPTIONS` preflight with header `Access-Control-Request-Method: PATCH`. The server responds with `Access-Control-Allow-Methods: GET, POST, PUT, PATCH, DELETE`. The browser verifies `PATCH` is approved and executes the real pricing update.
+
+2. **`Access-Control-Allow-Headers`**:
+   - **What it is**: An HTTP response header sent by the backend indicating which custom or non-standard HTTP request headers the frontend is allowed to attach.
+   - **Why it matters in this project**: By default, browsers only consider basic headers safe (e.g., `Accept`, `User-Agent`). Our client application attaches two critical custom headers on every authenticated API call in `apps/booking/src/lib/api.ts`:
+     1. `Authorization: Bearer <JWT_TOKEN>` (for authentication and role claims)
+     2. `Content-Type: application/json` (for sending JSON payloads)
+   - **How it works**: The browser sends `Access-Control-Request-Headers: authorization, content-type` in the preflight. The server responds with `Access-Control-Allow-Headers: Authorization, Content-Type`. Without this header, the browser blocks the frontend from sending the JWT token, breaking all protected routes.
+
+3. **Summary Table & Handshake Lifecycle**:
+   ```
+   Client (5173)                                  Server (5001)
+     │                                              │
+     │ 1. HTTP OPTIONS (Preflight)                  │
+     │    Access-Control-Request-Method: PATCH      │
+     │    Access-Control-Request-Headers: auth...   │
+     ├─────────────────────────────────────────────►│
+     │                                              │
+     │ 2. HTTP 204 No Content                      │
+     │    Access-Control-Allow-Origin: *            │
+     │    Access-Control-Allow-Methods: GET,PATCH.. │
+     │    Access-Control-Allow-Headers: Auth,JSON   │
+     │◄─────────────────────────────────────────────┤
+     │                                              │
+     │ 3. Actual HTTP PATCH /api/hotels/rooms/:id   │
+     │    Headers: Authorization: Bearer <jwt>      │
+     │    Body: { price_per_night: 9500 }           │
+     ├─────────────────────────────────────────────►│
+     │                                              │
+     │ 4. HTTP 200 OK (Data Response)               │
+     │◄─────────────────────────────────────────────┤
+   ```
+
+---
+
+### Q11: How did you implement Universal Error Handling and eliminate repetitive try-catch blocks across your Express routes?
+**Answer**:
+- **The Problem**: In standard Express route handlers, every endpoint repeats 6–8 lines of boilerplate `try { ... } catch (error) { res.status(500).json({ message: error.message }); }`. In a 20+ endpoint application, this bloats the codebase, creates code duplication, and risks unhandled promise rejections if any `catch` is forgotten.
+- **The Solution (Higher-Order Wrapper + Custom Error Class + Global Middleware)**:
+  1. **Higher-Order `asyncHandler`** (`server/middleware/errorHandler.js`):
+     ```javascript
+     export const asyncHandler = (fn) => (req, res, next) => {
+       Promise.resolve(fn(req, res, next)).catch(next);
+     };
+     ```
+     Wraps async routes and automatically forwards any thrown error or rejected Promise to Express's `next(err)` pipeline.
+  2. **Custom `AppError` Class**:
+     ```javascript
+     export class AppError extends Error {
+       constructor(message, statusCode = 500) {
+         super(message);
+         this.statusCode = statusCode;
+         this.isOperational = true;
+       }
+     }
+     ```
+     Enables throwing semantic errors anywhere in controller logic: `throw new AppError('Hotel not found', 404);` or `throw new AppError('Missing required fields', 400);`.
+  3. **Centralized `globalErrorHandler` Middleware**:
+     - Intercepts all errors at the bottom of the Express middleware chain in `server.js`.
+     - Intelligently categorizes error types:
+       - Mongoose `ValidationError` $\rightarrow$ Returns `400 Bad Request` with field details.
+       - Mongoose `CastError` (e.g. invalid MongoDB ObjectId) $\rightarrow$ Returns `400 Bad Request`.
+       - Duplicate Key (`code === 11000`, e.g. existing email/coupon code) $\rightarrow$ Returns `400 Bad Request`.
+       - JWT errors (`JsonWebTokenError`, `TokenExpiredError`) $\rightarrow$ Returns `401 Unauthorized`.
+       - Generic/Unhandled Server Errors $\rightarrow$ Returns `500 Internal Server Error` (with stack traces logged exclusively in development).
+- **Result**: Removed over 20 redundant `try-catch` blocks across all route files (`authRoutes`, `hotelRoutes`, `bookingRoutes`, `couponRoutes`), making handlers concise and readable while guaranteeing 100% consistent API error payloads.
+
+---
+
+### Q12: Why did you separate the Public Customer Login (`/login`) from the Internal Staff Portal (`/admin/login`)?
+**Answer**:
+- **User Experience (UX) Principle**: Customers booking luxury stays should never see internal corporate roles ("Super Admin", "Hotel Manager", "Front Desk Staff"). A customer authentication screen must be simple, elegant, and focused exclusively on guest sign-in and guest self-registration.
+- **Security & Attack Surface Reduction**: Exposing internal role names, badge permissions, or demo credentials on public consumer pages leaks system architecture and invites unauthorized credential stuffing.
+- **Separated Architectural Flow**:
+  - **`/login` (Public Portal)**: Guest Sign-In and Account Creation tabs with avatar selection and password strength meters. Strictly creates `customer` role accounts.
+  - **`/admin/login` (Internal Staff Portal)**: Hidden from consumer navigation. Features tactical role cards (Super Admin, Hotel Manager, Front Desk) with demo credentials designed for management access and technical evaluation.
+  - **Smart `<ProtectedRoute>` Guard**: Unauthenticated users attempting to access `/admin` are automatically redirected to `/admin/login`, while customer-facing protected routes redirect to `/login`.
+
+---
+
 ## 4. Frontend Architecture & React 18 Patterns
 
-### Q9: How is state managed on the React frontend to prevent UI desynchronization upon login/logout?
+### Q13: How is state managed on the React frontend to prevent UI desynchronization upon login/logout?
 **Answer**:
 - Implemented an `AuthContext` with a dedicated `useAuth()` hook in `apps/booking/src/hooks/useAuth.tsx`.
 - The `AuthProvider` wraps the entire component tree in `App.tsx`.
@@ -129,7 +242,7 @@
 
 ---
 
-### Q10: How do you prevent "Flash of Unauthenticated Content" (FOUC) and unauthorized route access in React Router?
+### Q14: How do you prevent "Flash of Unauthenticated Content" (FOUC) and unauthorized route access in React Router?
 **Answer**:
 - Implemented a reusable `<ProtectedRoute>` component:
   ```tsx
@@ -153,7 +266,7 @@
 
 ---
 
-### Q11: How did you implement real-time interactive UI like the Room Status Grid & Housekeeping cyclers without layout thrashing?
+### Q15: How did you implement real-time interactive UI like the Room Status Grid & Housekeeping cyclers without layout thrashing?
 **Answer**:
 - **Optimistic UI Updates**: When staff toggles a room status (`Clean` $\rightarrow$ `Dirty` $\rightarrow$ `Cleaning`), the local React state updates immediately so the UI responds in 0ms.
 - **Background API Sync**: The state change triggers an asynchronous API patch (`PATCH /api/hotels/rooms/:id/status`) in the background. If the request fails, the state automatically reverts to the previous snapshot with a toast notification.
@@ -163,7 +276,7 @@
 
 ## 5. Payments, Concurrency & E-Commerce Logic
 
-### Q12: How do you prevent overbooking / race conditions when two users book the last room simultaneously?
+### Q16: How do you prevent overbooking / race conditions when two users book the last room simultaneously?
 **Answer**:
 In production, overbooking is solved using **atomic operations and optimistic concurrency control**:
 1. **Mongoose Atomic Decrement**:
@@ -182,7 +295,7 @@ In production, overbooking is solved using **atomic operations and optimistic co
 
 ---
 
-### Q13: How did you handle coupon validation and discount calculation?
+### Q17: How did you handle coupon validation and discount calculation?
 **Answer**:
 - Coupon codes are normalized to uppercase and validated via `POST /api/coupons/validate`.
 - The server checks:
@@ -193,7 +306,7 @@ In production, overbooking is solved using **atomic operations and optimistic co
 
 ---
 
-### Q14: How would you integrate Razorpay/Stripe to handle webhooks and prevent double charges?
+### Q18: How would you integrate Razorpay/Stripe to handle webhooks and prevent double charges?
 **Answer**:
 1. **Order Creation**: Client calls backend `POST /api/payments/create-order`. Server creates an order with the payment provider and returns `order_id` and calculated amount.
 2. **Client Checkout**: Client opens Razorpay/Stripe modal and completes checkout.
@@ -251,7 +364,7 @@ In production, overbooking is solved using **atomic operations and optimistic co
 
 ## 7. Behavioral & Engineering Trade-Off Questions (STAR Method)
 
-### Q15: "What was the most challenging technical hurdle you faced while building this project and how did you resolve it?"
+### Q19: "What was the most challenging technical hurdle you faced while building this project and how did you resolve it?"
 **Answer**:
 - **Situation**: Designing a unified RBAC system where four distinct user roles shared the same API backend, but required radically different dashboard interfaces without code duplication or state leaks.
 - **Task**: Avoid creating 4 separate web apps while ensuring strict security boundaries and tailored UX for Front Desk vs. Strategic Managers.
@@ -262,7 +375,7 @@ In production, overbooking is solved using **atomic operations and optimistic co
 
 ---
 
-### Q16: "If you had 2 more weeks to work on this platform, what architectural improvements or features would you build next?"
+### Q20: "If you had 2 more weeks to work on this platform, what architectural improvements or features would you build next?"
 **Answer**:
 1. **Automated End-to-End Testing**: Integrate Playwright or Cypress test suites for the entire guest booking flow (Search $\rightarrow$ Select Suite $\rightarrow$ Apply Coupon $\rightarrow$ Checkout $\rightarrow$ Front Desk Check-in).
 2. **Real-Time WebSockets**: Replace manual sync buttons with Socket.io for live instant updates on room availability, new reservations, and housekeeping statuses.

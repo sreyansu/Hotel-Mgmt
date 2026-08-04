@@ -163,12 +163,7 @@ export const AdminLoginPage: React.FC = () => {
                   </p>
                 </div>
 
-                {/* Demo Credential Preview */}
-                <div className="bg-slate-50 rounded-xl p-3 mb-3 border border-slate-100">
-                  <p className="text-[10px] uppercase tracking-wider font-bold text-slate-400 mb-1.5">Demo Credentials</p>
-                  <p className="text-xs text-slate-600 font-mono">{role.demoEmail}</p>
-                  <p className="text-xs text-slate-400 font-mono">{role.demoPassword}</p>
-                </div>
+                
 
                 <div className="pt-3 border-t border-slate-100 flex items-center justify-between text-primary font-semibold text-xs group-hover:translate-x-0.5 transition-transform">
                   <span>Continue to Sign In</span>
