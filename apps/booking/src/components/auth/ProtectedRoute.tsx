@@ -31,9 +31,12 @@ export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ children, allowe
     );
   }
 
-  // If unauthenticated, redirect to login and preserve the intended destination
+  // If unauthenticated, redirect to the appropriate login page
   if (!user) {
-    return <Navigate to="/login" state={{ from: location }} replace />;
+    // If this protected route requires admin roles, redirect to admin login
+    const isAdminRoute = allowedRoles && allowedRoles.some(r => ['super_admin', 'hotel_manager', 'staff'].includes(r));
+    const loginPath = isAdminRoute ? '/admin/login' : '/login';
+    return <Navigate to={loginPath} state={{ from: location }} replace />;
   }
 
   // If specific roles are required, verify user's role

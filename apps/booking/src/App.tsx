@@ -19,8 +19,9 @@ import { HotelDetailsPage } from './pages/HotelDetailsPage';
 import { CheckoutPage } from './pages/CheckoutPage';
 import { MyBookingsPage } from './pages/MyBookingsPage';
 
-// Admin Page
+// Admin Pages
 import { AdminDashboardPage } from './pages/admin/AdminDashboardPage';
+import { AdminLoginPage } from './pages/admin/AdminLoginPage';
 
 // Auth Pages & Route Guard
 import { LoginPage } from './pages/LoginPage';
@@ -106,6 +107,7 @@ function App() {
 
               {/* Auth Routes */}
               <Route path="/login" element={<LoginPage />} />
+              <Route path="/admin/login" element={<AdminLoginPage />} />
               <Route path="/register" element={<RegisterPage />} />
               <Route path="/forgot-password" element={<ForgotPasswordPage />} />
               <Route path="/update-password" element={<UpdatePasswordPage />} />

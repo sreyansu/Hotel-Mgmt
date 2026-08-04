@@ -10,6 +10,7 @@ import express from 'express';
 import cors from 'cors';
 import dotenv from 'dotenv';
 import { connectDB } from './config/db.js';
+import { globalErrorHandler } from './middleware/errorHandler.js';
 
 // Import Route Handlers
 import authRoutes from './routes/authRoutes.js';
@@ -31,7 +32,7 @@ connectDB();
 // 2. Global Middleware
 // CORS: Allows frontend running on Vite (http://localhost:5173) to communicate with API
 app.use(cors({
-  origin: '*', 
+  origin: '*',
   credentials: true,
 }));
 
@@ -53,14 +54,8 @@ app.get('/api/health', (req, res) => {
   });
 });
 
-// 5. Global Error Handling Middleware (Catches unhandled errors across routes)
-app.use((err, req, res, next) => {
-  console.error('[Unhandled Server Error]:', err.stack);
-  res.status(500).json({
-    message: 'Internal Server Error',
-    error: err.message,
-  });
-});
+// 5. Global Error Handling Middleware (Catches all unhandled errors from asyncHandler)
+app.use(globalErrorHandler);
 
 // 6. Start the Server
 app.listen(PORT, () => {

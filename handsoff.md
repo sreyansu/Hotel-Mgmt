@@ -29,7 +29,7 @@ The database includes 4 pre-configured RBAC roles ready for testing or live inte
 | **Super Admin** | `admin@paradisepalace.com` | `admin@123` | `/admin` (Command Center) | **Enterprise Platform Oversight**: Multi-hotel portfolio management (6 properties), Global bookings master ledger, Promo coupon campaigns, and RBAC team provisioning. |
 | **Customer** | `customer@gmail.com` | `customer@123` | `/bookings`, `/` | **Guest Self-Service**: Browse luxury hotels, check availability, apply promo discount codes, reserve suites, and view booked stay history. |
 
-> **Tip**: On the `/login` page, select any of the 4 horizontal role cards to autofill demo credentials and reveal the respective authentication section.
+> **Tip**: Customers sign in at `/login`. Staff and management access the internal portal at **`/admin/login`** — select any of the 3 role cards to autofill demo credentials.
 
 ---
 
@@ -45,9 +45,9 @@ The database includes 4 pre-configured RBAC roles ready for testing or live inte
 
 ## 4. Key Architectural Features Implemented
 
-1. **Two-Step Role-First Authentication Portal**:
-   - Clean horizontal single-row role selector (`Super Admin`, `Hotel Manager`, `Front Desk`, `Customer`).
-   - Dynamic reveal of Sign In or Customer Account Creation upon role selection.
+1. **Separated Authentication Architecture**:
+   - **`/login`** — Public-facing customer sign-in & sign-up page. Clean, professional, no internal roles exposed.
+   - **`/admin/login`** — Hidden internal staff portal with role selection cards (Super Admin, Hotel Manager, Front Desk) and demo credential auto-fill. Not linked in public navigation.
    - Public account creation strictly restricted to the `customer` role.
 2. **Distinct Three-Tier Administrative Dashboards**:
    - **Front Desk View**: Interactive Room Grid (101–304), Live Arrival/Departure queues, Housekeeping status cycler (`clean` $\rightarrow$ `dirty` $\rightarrow$ `cleaning`), Room Key assignment, and Concierge Notes modal.
